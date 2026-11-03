@@ -1,0 +1,19 @@
+{
+  "name": "@borrowloop/shared",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "./src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./config": "./src/config.js",
+    "./money": "./src/money.js",
+    "./errors": "./src/errors.js",
+    "./schemas": "./src/schemas/index.js"
+  },
+  "scripts": {
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "zod": "^3.24.2"
+  }
+}

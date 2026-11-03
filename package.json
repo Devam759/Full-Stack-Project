@@ -1,0 +1,49 @@
+{
+  "name": "borrowloop-monorepo",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "dev:api": "npm run dev --workspace=@borrowloop/api",
+    "dev:worker": "npm run dev --workspace=@borrowloop/worker",
+    "dev:web": "npm run dev --workspace=@borrowloop/web",
+    "dev:portal": "npm run dev --workspace=@borrowloop/portal",
+    "dev": "concurrently -n \"api,worker,web,portal\" -c \"blue,cyan,green,magenta\" \"npm:dev:api\" \"npm:dev:worker\" \"npm:dev:web\" \"npm:dev:portal\"",
+    "build": "npm run build --workspaces --if-present",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "*.{js,jsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,md,css,html,yml,yaml}": [
+      "prettier --write"
+    ]
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.20.0",
+    "concurrently": "^9.1.2",
+    "eslint": "^9.20.0",
+    "eslint-plugin-react": "^7.37.4",
+    "eslint-plugin-react-hooks": "^5.1.0",
+    "globals": "^15.14.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^15.4.3",
+    "prettier": "^3.5.0",
+    "vitest": "^3.0.5"
+  }
+}
