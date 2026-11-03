@@ -11,8 +11,19 @@ export async function setupTestDB() {
   const uriFromEnv = process.env.MONGODB_TEST_URI;
 
   if (uriFromEnv) {
-    await mongoose.connect(uriFromEnv);
-    return { uri: uriFromEnv, isMemory: false };
+    let targetUri = uriFromEnv;
+    try {
+      const url = new URL(uriFromEnv);
+      const workerId = process.env.VITEST_POOL_ID || process.pid;
+      const baseDb = url.pathname.replace(/^\//, '') || 'borrowloop_test';
+      url.pathname = `/${baseDb}_${workerId}`;
+      targetUri = url.toString();
+    } catch {
+      // Fallback to original
+    }
+
+    await mongoose.connect(targetUri);
+    return { uri: targetUri, isMemory: false };
   }
 
   replSet = await MongoMemoryReplSet.create({
@@ -45,6 +56,13 @@ export async function clearTestDB() {
  */
 export async function teardownTestDB() {
   if (mongoose.connection.readyState !== 0) {
+    try {
+      if (mongoose.connection.db) {
+        await mongoose.connection.db.dropDatabase();
+      }
+    } catch {
+      // Ignore cleanup error
+    }
     await mongoose.disconnect();
   }
   if (replSet) {
