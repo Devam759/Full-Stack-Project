@@ -16,6 +16,7 @@
     "dev:web": "npm run dev --workspace=@borrowloop/web",
     "dev:portal": "npm run dev --workspace=@borrowloop/portal",
     "dev": "concurrently -n \"api,worker,web,portal\" -c \"blue,cyan,green,magenta\" \"npm:dev:api\" \"npm:dev:worker\" \"npm:dev:web\" \"npm:dev:portal\"",
+    "create-admin": "node apps/api/scripts/createAdmin.js",
     "build": "npm run build --workspaces --if-present",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -45,5 +46,8 @@
     "lint-staged": "^15.4.3",
     "prettier": "^3.5.0",
     "vitest": "^3.0.5"
+  },
+  "dependencies": {
+    "argon2": "^0.45.2"
   }
 }

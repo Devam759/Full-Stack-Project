@@ -36,8 +36,21 @@ export const BUSINESS_CONFIG = Object.freeze({
   REFRESH_TOKEN_EXPIRY_DAYS: 30,
   REFRESH_TOKEN_EXPIRY_SECONDS: 30 * 24 * 60 * 60,
   MIN_PASSWORD_LENGTH: 8,
+  MAX_PASSWORD_LENGTH: 128,
   BCRYPT_SALT_ROUNDS: 12,
   MIN_USER_AGE_YEARS: 18,
+  TOKEN_AUDIENCES: Object.freeze({
+    USER: 'borrowloop:user',
+    PORTAL: 'borrowloop:portal',
+    PORTAL_PRE_TOTP: 'borrowloop:portal_pre_totp',
+  }),
+  ALLOW_REFRESH_TOKEN_BODY_FALLBACK: process.env.NODE_ENV !== 'production',
+  TOTP_SETTINGS: Object.freeze({
+    ISSUER: 'BorrowLoop',
+    STEP_SECONDS: 30,
+    WINDOW: 1, // +/- 1 step tolerance
+    MAX_ATTEMPTS: 5,
+  }),
 
   // Ratings
   MIN_RATING_STARS: 1,
@@ -79,13 +92,18 @@ export const BUSINESS_CONFIG = Object.freeze({
   ]),
   DATA_SENSITIVE_CATEGORIES: Object.freeze(['phones', 'laptops', 'tablets', 'storage_devices']),
 
-  // Upload Limits
+  // Upload Limits & Storage
   MAX_ITEM_PHOTOS: 6,
   MAX_PROFILE_PHOTOS: 1,
   MAX_HANDOVER_PHOTOS: 6,
   MAX_UPLOAD_SIZE_BYTES: 10 * 1024 * 1024, // 10 MB
   ALLOWED_IMAGE_MIME_TYPES: Object.freeze(['image/jpeg', 'image/png', 'image/webp']),
   ALLOWED_IMAGE_EXTENSIONS: Object.freeze(['jpg', 'jpeg', 'png', 'webp']),
+  UPLOAD_FOLDERS: Object.freeze({
+    PROFILE: 'borrowloop/profiles',
+    ITEM: 'borrowloop/items',
+    HANDOVER: 'borrowloop/handovers',
+  }),
 
   // Pagination & Lists
   DEFAULT_PAGE_LIMIT: 20,

@@ -1,6 +1,7 @@
 import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
+import cookieParser from 'cookie-parser';
 import { pinoHttp } from 'pino-http';
 import { AppError, ERROR_CODES } from '@borrowloop/shared';
 
@@ -10,7 +11,12 @@ import requestIdMiddleware from './common/requestId.js';
 import errorHandler from './common/errorHandler.js';
 import createRateLimiter from './common/rateLimiter.js';
 import { getRedisClient } from './redis.js';
+
 import healthRouter from './routes/health.js';
+import authRouter from './modules/auth/authRoutes.js';
+import portalAuthRouter from './modules/portal/portalAuthRoutes.js';
+import userRouter from './modules/users/userRoutes.js';
+import uploadRouter from './modules/uploads/uploadRoutes.js';
 
 export function createApp() {
   const app = express();
@@ -23,7 +29,6 @@ export function createApp() {
   app.use(
     cors({
       origin: (origin, callback) => {
-        // Allow requests with no origin (e.g. mobile apps, curl, server-to-server) or allowed origins
         if (!origin || allowedOrigins.includes(origin)) {
           return callback(null, true);
         }
@@ -38,6 +43,9 @@ export function createApp() {
 
   // Request ID
   app.use(requestIdMiddleware);
+
+  // Cookie parser
+  app.use(cookieParser());
 
   // Body parser with 1MB limit (Requirement 11)
   app.use(express.json({ limit: '1mb' }));
@@ -65,9 +73,15 @@ export function createApp() {
     }),
   );
 
-  // Health and readiness routes (both at root and /v1 for convenience)
+  // Health and readiness routes
   app.use('/v1', healthRouter);
   app.use('/', healthRouter);
+
+  // Module routes
+  app.use('/v1/auth', authRouter);
+  app.use('/v1/portal/auth', portalAuthRouter);
+  app.use('/v1/users', userRouter);
+  app.use('/v1/uploads', uploadRouter);
 
   // 404 handler
   app.use((req, _res, next) => {

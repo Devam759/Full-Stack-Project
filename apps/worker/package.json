@@ -10,10 +10,15 @@
   },
   "dependencies": {
     "@borrowloop/shared": "*",
+    "argon2": "^0.45.2",
     "bullmq": "^5.41.3",
+    "cookie-parser": "^1.4.7",
     "dotenv": "^16.4.7",
     "ioredis": "^5.4.2",
+    "jsonwebtoken": "^9.0.3",
     "mongoose": "^8.9.5",
+    "nodemailer": "^10.3.1",
+    "otpauth": "^9.6.0",
     "pino": "^9.6.0",
     "zod": "^3.24.2"
   },
