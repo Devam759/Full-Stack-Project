@@ -46,4 +46,19 @@ describe('packages/shared/config', () => {
       'image/webp',
     ]);
   });
+
+  it('matches item categories, conditions, and limits for Phase 3', () => {
+    expect(BUSINESS_CONFIG.ITEM_CATEGORIES).toContain('books_and_study');
+    expect(BUSINESS_CONFIG.ITEM_CATEGORIES).not.toContain('weapons and ammunition');
+    expect(BUSINESS_CONFIG.ITEM_CONDITIONS).toEqual(['new', 'like_new', 'good', 'fair']);
+    expect(BUSINESS_CONFIG.MAX_ACTIVE_ITEMS_PER_USER).toBe(50);
+    expect(BUSINESS_CONFIG.PROHIBITED_WORDS_BLOCKLIST).toContain('gun');
+    expect(BUSINESS_CONFIG.PROHIBITED_WORDS_BLOCKLIST).toContain('cocaine');
+    expect(BUSINESS_CONFIG.ACTIVE_BOOKING_STATUSES).toEqual([
+      'accepted',
+      'picked_up',
+      'returned',
+      'disputed',
+    ]);
+  });
 });

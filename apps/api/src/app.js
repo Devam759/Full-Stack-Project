@@ -20,6 +20,7 @@ import uploadRouter from './modules/uploads/uploadRoutes.js';
 import communityRouter from './modules/communities/communityRoutes.js';
 import adminCommunityRouter from './modules/admin/adminCommunityRoutes.js';
 import locationRouter from './modules/locations/locationRoutes.js';
+import itemRouter from './modules/items/itemRoutes.js';
 
 export function createApp() {
   const app = express();
@@ -89,6 +90,7 @@ export function createApp() {
   app.use('/v1/communities', communityRouter);
   app.use('/v1/admin/communities', adminCommunityRouter);
   app.use('/v1/locations', locationRouter);
+  app.use('/v1/items', itemRouter);
 
   // 404 handler
   app.use((req, _res, next) => {

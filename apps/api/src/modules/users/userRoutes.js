@@ -3,10 +3,12 @@ import { updateProfileSchema, deleteAccountSchema } from '@borrowloop/shared';
 import validate from '../../common/validate.js';
 import { authenticate } from '../../common/authMiddleware.js';
 import * as userController from './userController.js';
+import { getUserItems } from '../items/itemController.js';
 
 export const userRouter = Router();
 
 userRouter.get('/me', authenticate(), userController.getMe);
+userRouter.get('/me/items', authenticate(), getUserItems);
 userRouter.patch(
   '/me',
   authenticate(),

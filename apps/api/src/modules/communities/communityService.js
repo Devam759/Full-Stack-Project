@@ -4,6 +4,7 @@ import { AppError, ERROR_CODES, BUSINESS_CONFIG } from '@borrowloop/shared';
 import Community from '../../models/Community.js';
 import Membership from '../../models/Membership.js';
 import Block from '../../models/Block.js';
+import { handleCommunityMembershipLoss } from '../items/itemService.js';
 
 /**
  * Calculates human-readable distance bands to preserve location privacy.
@@ -494,6 +495,9 @@ export async function leaveCommunity(communityId, userId) {
     community.memberCount = Math.max(0, community.memberCount - 1);
     await community.save({ session });
 
+    // Remove community from user's items and pause orphaned items (Phase 3 refinement 12)
+    await handleCommunityMembershipLoss(userId, communityId, session);
+
     await session.commitTransaction();
     return true;
   } catch (err) {
@@ -651,6 +655,9 @@ export async function removeMember(communityId, ownerId, targetUserId) {
 
     community.memberCount = Math.max(0, community.memberCount - 1);
     await community.save({ session });
+
+    // Remove community from user's items and pause orphaned items (Phase 3 refinement 12)
+    await handleCommunityMembershipLoss(targetUserId, communityId, session);
 
     await session.commitTransaction();
     return true;

@@ -10,11 +10,15 @@ import { VerifyEmailScreen } from './screens/VerifyEmailScreen.jsx';
 import { ProfileScreen } from './screens/ProfileScreen.jsx';
 import { CommunitiesScreen } from './screens/CommunitiesScreen.jsx';
 import { CommunityDetailScreen } from './screens/CommunityDetailScreen.jsx';
+import { ItemsBrowseScreen } from './screens/ItemsBrowseScreen.jsx';
+import { ItemDetailScreen } from './screens/ItemDetailScreen.jsx';
+import { CreateItemScreen } from './screens/CreateItemScreen.jsx';
 
 function MainAppShell() {
   const { user, requiresPhoto, setRequiresPhoto } = useAuth();
   const [currentScreen, setCurrentScreen] = useState('communities');
   const [selectedCommunityId, setSelectedCommunityId] = useState(null);
+  const [selectedItemId, setSelectedItemId] = useState(null);
 
   useEffect(() => {
     applyBrandTokens();
@@ -99,6 +103,36 @@ function MainAppShell() {
             }}
           />
         )}
+
+        {currentScreen === 'items' && (
+          <ItemsBrowseScreen
+            onSelectItem={(id) => {
+              setSelectedItemId(id);
+              setCurrentScreen('item-detail');
+            }}
+            onCreateItem={() => setCurrentScreen('create-item')}
+          />
+        )}
+
+        {currentScreen === 'item-detail' && selectedItemId && (
+          <ItemDetailScreen
+            itemId={selectedItemId}
+            onBack={() => {
+              setSelectedItemId(null);
+              setCurrentScreen('items');
+            }}
+          />
+        )}
+
+        {currentScreen === 'create-item' && (
+          <CreateItemScreen
+            onBack={() => setCurrentScreen('items')}
+            onSuccess={(newItem) => {
+              setSelectedItemId(newItem._id);
+              setCurrentScreen('item-detail');
+            }}
+          />
+        )}
       </main>
 
       {/* Mobile Bottom Navigation Bar */}
@@ -107,6 +141,7 @@ function MainAppShell() {
           type="button"
           onClick={() => {
             setSelectedCommunityId(null);
+            setSelectedItemId(null);
             setCurrentScreen('communities');
           }}
           className={`flex flex-col items-center gap-1 p-2 min-w-[56px] focus:outline-none ${
@@ -120,8 +155,18 @@ function MainAppShell() {
         </button>
         <button
           type="button"
-          onClick={() => alert('Item search will be active in Phase 3')}
-          className="flex flex-col items-center gap-1 text-text-muted hover:text-slate-900 p-2 min-w-[56px] focus:outline-none"
+          onClick={() => {
+            setSelectedCommunityId(null);
+            setSelectedItemId(null);
+            setCurrentScreen('items');
+          }}
+          className={`flex flex-col items-center gap-1 p-2 min-w-[56px] focus:outline-none ${
+            currentScreen === 'items' ||
+            currentScreen === 'item-detail' ||
+            currentScreen === 'create-item'
+              ? 'text-primary'
+              : 'text-text-muted'
+          }`}
         >
           <Search className="w-5 h-5" />
           <span className="text-[11px] font-medium">Items</span>

@@ -5,7 +5,8 @@ import {
   paginationQuerySchema,
   geoPointSchema,
   idempotencyKeySchema,
-} from '../src/schemas/common.js';
+  createItemSchema,
+} from '../src/schemas/index.js';
 
 describe('packages/shared/schemas', () => {
   it('validates integer paise schema', () => {
@@ -43,5 +44,52 @@ describe('packages/shared/schemas', () => {
   it('validates idempotency key length', () => {
     expect(idempotencyKeySchema.safeParse('key-12345').success).toBe(true);
     expect(idempotencyKeySchema.safeParse('short').success).toBe(false); // min 8
+  });
+
+  it('validates createItemSchema with sanitization, category, and wallet cap invariant', () => {
+    const validData = {
+      title: '<b>Drill Machine</b>  with bits  ',
+      description: '<p>A heavy duty drill machine in perfect condition.</p>',
+      category: 'tools_and_diy',
+      condition: 'good',
+      photos: ['https://res.cloudinary.com/demo/image/upload/borrowloop/items/user123/drill.jpg'],
+      rentPerDayPaise: 200_00, // Rs 200
+      depositPaise: 1000_00, // Rs 1000
+      minDays: 1,
+      maxDays: 7,
+      communityIds: ['507f1f77bcf86cd799439011'],
+    };
+
+    const parsed = createItemSchema.parse(validData);
+    expect(parsed.title).toBe('Drill Machine with bits');
+    expect(parsed.description).toBe('A heavy duty drill machine in perfect condition.');
+
+    // Prohibited category fails
+    const invalidCategory = { ...validData, category: 'weapons and ammunition' };
+    expect(createItemSchema.safeParse(invalidCategory).success).toBe(false);
+
+    // Electronics category requires electronicsWarningAccepted
+    const electronicsWithoutAck = {
+      ...validData,
+      category: 'electronics_and_gadgets',
+      electronicsWarningAccepted: false,
+    };
+    expect(createItemSchema.safeParse(electronicsWithoutAck).success).toBe(false);
+
+    const electronicsWithAck = {
+      ...validData,
+      category: 'electronics_and_gadgets',
+      electronicsWarningAccepted: true,
+    };
+    expect(createItemSchema.safeParse(electronicsWithAck).success).toBe(true);
+
+    // Wallet cap invariant failure (rent * maxDays + deposit > 50,000,00)
+    const overCap = {
+      ...validData,
+      rentPerDayPaise: 5000_00,
+      maxDays: 10,
+      depositPaise: 1000_00, // 50,000 + 1,000 = 51,000 > 50,000
+    };
+    expect(createItemSchema.safeParse(overCap).success).toBe(false);
   });
 });

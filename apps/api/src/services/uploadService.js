@@ -6,7 +6,7 @@ const { UPLOAD_FOLDERS, ALLOWED_IMAGE_EXTENSIONS } = BUSINESS_CONFIG;
 
 /**
  * Generates signed parameters for direct image upload to Cloudinary.
- * Enforces folder routing, allowed formats, and EXIF/metadata removal.
+ * Enforces user sandboxed folder routing, allowed formats, and EXIF/metadata removal.
  *
  * @param {'profile' | 'item' | 'handover'} type
  * @param {string} userId
@@ -18,7 +18,7 @@ export function generateUploadSignature(type, userId) {
       ? UPLOAD_FOLDERS.PROFILE
       : type === 'handover'
         ? UPLOAD_FOLDERS.HANDOVER
-        : UPLOAD_FOLDERS.ITEM;
+        : `${UPLOAD_FOLDERS.ITEM}/${userId}`;
 
   const timestamp = Math.floor(Date.now() / 1000);
 
@@ -54,13 +54,14 @@ export function generateUploadSignature(type, userId) {
 
 /**
  * Validates that an image URL comes from our configured Cloudinary account,
- * targets the allowed folder, and carries an allowed extension.
+ * targets the allowed sandboxed folder (including owner userId for items), and carries an allowed extension.
  *
  * @param {string} url
  * @param {'profile' | 'item' | 'handover'} [expectedType='profile']
+ * @param {string} [expectedUserId=null]
  * @returns {boolean}
  */
-export function isValidCloudinaryPhotoUrl(url, expectedType = 'profile') {
+export function isValidCloudinaryPhotoUrl(url, expectedType = 'profile', expectedUserId = null) {
   if (typeof url !== 'string' || !url.trim()) return false;
 
   const folder =
@@ -68,7 +69,9 @@ export function isValidCloudinaryPhotoUrl(url, expectedType = 'profile') {
       ? UPLOAD_FOLDERS.PROFILE
       : expectedType === 'handover'
         ? UPLOAD_FOLDERS.HANDOVER
-        : UPLOAD_FOLDERS.ITEM;
+        : expectedUserId
+          ? `${UPLOAD_FOLDERS.ITEM}/${expectedUserId}`
+          : UPLOAD_FOLDERS.ITEM;
 
   try {
     const parsed = new URL(url);
@@ -91,4 +94,42 @@ export function isValidCloudinaryPhotoUrl(url, expectedType = 'profile') {
   } catch {
     return false;
   }
+}
+
+/**
+ * Generates an optimized, resized CDN variant URL from a Cloudinary image URL.
+ *
+ * @param {string} url - Original Cloudinary image URL
+ * @param {object} options
+ * @param {number} [options.width=600]
+ * @param {number} [options.height]
+ * @param {string} [options.crop='limit']
+ * @param {string} [options.quality='auto']
+ * @param {string} [options.format='auto']
+ * @returns {string} Transformed image URL
+ */
+export function buildCdnImageUrl(url, options = {}) {
+  if (!url || typeof url !== 'string') return '';
+  const { width = 600, height, crop = 'limit', quality = 'auto', format = 'auto' } = options;
+
+  const transformations = [`c_${crop}`, `q_${quality}`, `f_${format}`];
+  if (width) transformations.push(`w_${width}`);
+  if (height) transformations.push(`h_${height}`);
+
+  const transformString = transformations.join(',');
+
+  // Cloudinary standard upload pattern: .../image/upload/(v<version>/)?path
+  const uploadToken = '/image/upload/';
+  const index = url.indexOf(uploadToken);
+  if (index === -1) return url;
+
+  const prefix = url.slice(0, index + uploadToken.length);
+  const remainder = url.slice(index + uploadToken.length);
+
+  // If already contains transformation, don't double transform
+  if (remainder.startsWith('c_') || remainder.startsWith('w_')) {
+    return url;
+  }
+
+  return `${prefix}${transformString}/${remainder}`;
 }
