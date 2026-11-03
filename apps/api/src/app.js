@@ -17,6 +17,9 @@ import authRouter from './modules/auth/authRoutes.js';
 import portalAuthRouter from './modules/portal/portalAuthRoutes.js';
 import userRouter from './modules/users/userRoutes.js';
 import uploadRouter from './modules/uploads/uploadRoutes.js';
+import communityRouter from './modules/communities/communityRoutes.js';
+import adminCommunityRouter from './modules/admin/adminCommunityRoutes.js';
+import locationRouter from './modules/locations/locationRoutes.js';
 
 export function createApp() {
   const app = express();
@@ -63,12 +66,13 @@ export function createApp() {
   }
 
   // Redis-backed rate limiting base (Requirement 11)
+  const isTest = process.env.NODE_ENV === 'test';
   const redis = getRedisClient();
   app.use(
     createRateLimiter({
       redis,
       windowSeconds: 60,
-      maxRequests: 120, // default global baseline
+      maxRequests: isTest ? 10_000 : 120, // High ceiling in test environment for concurrency stress testing
       keyPrefix: 'rl:global',
     }),
   );
@@ -82,6 +86,9 @@ export function createApp() {
   app.use('/v1/portal/auth', portalAuthRouter);
   app.use('/v1/users', userRouter);
   app.use('/v1/uploads', uploadRouter);
+  app.use('/v1/communities', communityRouter);
+  app.use('/v1/admin/communities', adminCommunityRouter);
+  app.use('/v1/locations', locationRouter);
 
   // 404 handler
   app.use((req, _res, next) => {

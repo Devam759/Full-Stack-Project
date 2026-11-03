@@ -1,7 +1,10 @@
+import mongoose from 'mongoose';
 import { AppError, ERROR_CODES } from '@borrowloop/shared';
 import User from '../../models/User.js';
 import Block from '../../models/Block.js';
 import RefreshToken from '../../models/RefreshToken.js';
+import Community from '../../models/Community.js';
+import Membership from '../../models/Membership.js';
 import { verifyPassword } from '../../common/crypto.js';
 import { isValidCloudinaryPhotoUrl } from '../../services/uploadService.js';
 
@@ -76,7 +79,6 @@ export async function getPublicProfile(targetUserId) {
     ratingAvg: user.ratingAvg,
     ratingCount: user.ratingCount,
     createdAt: user.createdAt,
-    // Exact location is never shown; approximate distance or city shown in later phases
   };
 }
 
@@ -124,6 +126,8 @@ export async function getBlockedUsers(blockerId) {
 
 /**
  * Deletes user account (anonymizes personal data, revokes tokens).
+ * Blocks deletion if user is an owner of a community with other members.
+ * Removes memberships and decrements community memberCount inside a transaction.
  */
 export async function deleteAccount(userId, password) {
   const user = await User.findById(userId).select('+passwordHash');
@@ -145,16 +149,53 @@ export async function deleteAccount(userId, password) {
     );
   }
 
-  // Clear personal data (DPDPA compliance)
-  user.name = 'Deleted User';
-  user.email = `deleted_${user._id}@deleted.borrowloop.test`;
-  user.phone = null;
-  user.photoUrl = null;
-  user.status = 'deleted';
-  await user.save();
+  // Check if owner of any community with other members (User Change 2)
+  const ownedWithMembers = await Community.findOne({
+    ownerId: userId,
+    memberCount: { $gt: 1 },
+    status: { $ne: 'deleted' },
+  });
 
-  // Terminate all sessions
-  await RefreshToken.updateMany({ userId: user._id }, { revokedAt: new Date() });
+  if (ownedWithMembers) {
+    throw new AppError(
+      ERROR_CODES.CONFLICT,
+      'Cannot delete account while you own communities with other members. Please transfer ownership or delete the community first.',
+      409,
+    );
+  }
 
-  return true;
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    // Clear personal data (DPDPA compliance)
+    user.name = 'Deleted User';
+    user.email = `deleted_${user._id}@deleted.borrowloop.test`;
+    user.phone = null;
+    user.photoUrl = null;
+    user.status = 'deleted';
+    await user.save({ session });
+
+    // Decrement memberCount for communities the user belonged to
+    const activeMemberships = await Membership.find({ userId: user._id, status: 'active' }).session(
+      session,
+    );
+    for (const m of activeMemberships) {
+      await Community.updateOne({ _id: m.communityId }, { $inc: { memberCount: -1 } }, { session });
+    }
+
+    // Delete memberships
+    await Membership.deleteMany({ userId: user._id }, { session });
+
+    // Terminate all sessions
+    await RefreshToken.updateMany({ userId: user._id }, { revokedAt: new Date() }, { session });
+
+    await session.commitTransaction();
+    return true;
+  } catch (err) {
+    await session.abortTransaction();
+    throw err;
+  } finally {
+    await session.endSession();
+  }
 }

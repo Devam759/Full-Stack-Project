@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Home, Search, Calendar, Wallet, User as UserIcon } from 'lucide-react';
+import { Users, Search, Calendar, Wallet, User as UserIcon } from 'lucide-react';
 import { applyBrandTokens, BRAND } from './brand.js';
 import { AuthProvider, useAuth } from './context/AuthContext.jsx';
 import { OnboardingScreen } from './screens/OnboardingScreen.jsx';
@@ -8,11 +8,13 @@ import { PhotoUploadStep } from './screens/PhotoUploadStep.jsx';
 import { LoginScreen } from './screens/LoginScreen.jsx';
 import { VerifyEmailScreen } from './screens/VerifyEmailScreen.jsx';
 import { ProfileScreen } from './screens/ProfileScreen.jsx';
-import { formatPaise } from '@borrowloop/shared';
+import { CommunitiesScreen } from './screens/CommunitiesScreen.jsx';
+import { CommunityDetailScreen } from './screens/CommunityDetailScreen.jsx';
 
 function MainAppShell() {
   const { user, requiresPhoto, setRequiresPhoto } = useAuth();
-  const [currentScreen, setCurrentScreen] = useState('home');
+  const [currentScreen, setCurrentScreen] = useState('communities');
+  const [selectedCommunityId, setSelectedCommunityId] = useState(null);
 
   useEffect(() => {
     applyBrandTokens();
@@ -21,17 +23,20 @@ function MainAppShell() {
     } else if (requiresPhoto) {
       setCurrentScreen('photo-step');
     } else {
-      setCurrentScreen('home');
+      setCurrentScreen('communities');
     }
   }, [user, requiresPhoto]);
 
   return (
     <div className="min-h-screen flex flex-col bg-background text-text">
       {/* Top Header */}
-      <header className="sticky top-0 z-40 bg-surface border-b border-slate-200 px-4 py-3 flex items-center justify-between shadow-sm">
+      <header className="sticky top-0 z-40 bg-surface border-b border-slate-200 px-4 py-3 flex items-center justify-between shadow-xs">
         <div
           className="flex items-center gap-2 cursor-pointer"
-          onClick={() => setCurrentScreen(user ? 'home' : 'onboarding')}
+          onClick={() => {
+            setSelectedCommunityId(null);
+            setCurrentScreen(user ? 'communities' : 'onboarding');
+          }}
         >
           <div
             className="w-7 h-7 text-primary"
@@ -68,7 +73,7 @@ function MainAppShell() {
           <PhotoUploadStep
             onComplete={() => {
               setRequiresPhoto(false);
-              setCurrentScreen('home');
+              setCurrentScreen('communities');
             }}
           />
         )}
@@ -76,43 +81,23 @@ function MainAppShell() {
           <ProfileScreen onNavigate={(screen) => setCurrentScreen(screen)} />
         )}
 
-        {currentScreen === 'home' && (
-          <div className="p-4 space-y-4">
-            <div className="bg-surface rounded-brand p-5 border border-slate-200 shadow-sm space-y-3">
-              <h1 className="text-xl font-heading font-semibold text-slate-900">
-                Welcome back{user ? `, ${user.name}` : ''}!
-              </h1>
-              <p className="text-sm text-text-muted">
-                Your community borrowing platform is active. Communities, item search, and listings
-                are coming in Phase 2 and Phase 3.
-              </p>
+        {currentScreen === 'communities' && (
+          <CommunitiesScreen
+            onSelectCommunity={(id) => {
+              setSelectedCommunityId(id);
+              setCurrentScreen('community-detail');
+            }}
+          />
+        )}
 
-              <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-sm">
-                <span className="text-text-muted font-medium">Demo Wallet:</span>
-                <span className="font-semibold text-slate-900 font-mono">
-                  {formatPaise(0, { showDemoTag: true })}
-                </span>
-              </div>
-            </div>
-
-            {!user && (
-              <div className="bg-teal-50 border border-teal-200 p-4 rounded-brand flex items-center justify-between">
-                <div>
-                  <h2 className="text-xs font-bold text-teal-900">Join Your Community</h2>
-                  <p className="text-[11px] text-teal-700">
-                    Create an account to start lending and borrowing
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setCurrentScreen('signup')}
-                  className="px-3 py-1.5 bg-primary text-white text-xs font-semibold rounded-brand shadow-xs"
-                >
-                  Sign Up
-                </button>
-              </div>
-            )}
-          </div>
+        {currentScreen === 'community-detail' && selectedCommunityId && (
+          <CommunityDetailScreen
+            communityId={selectedCommunityId}
+            onBack={() => {
+              setSelectedCommunityId(null);
+              setCurrentScreen('communities');
+            }}
+          />
         )}
       </main>
 
@@ -120,13 +105,18 @@ function MainAppShell() {
       <nav className="fixed bottom-0 left-0 right-0 z-50 bg-surface border-t border-slate-200 max-w-lg mx-auto flex items-center justify-around py-2 px-3 shadow-lg">
         <button
           type="button"
-          onClick={() => setCurrentScreen('home')}
+          onClick={() => {
+            setSelectedCommunityId(null);
+            setCurrentScreen('communities');
+          }}
           className={`flex flex-col items-center gap-1 p-2 min-w-[56px] focus:outline-none ${
-            currentScreen === 'home' ? 'text-primary' : 'text-text-muted'
+            currentScreen === 'communities' || currentScreen === 'community-detail'
+              ? 'text-primary'
+              : 'text-text-muted'
           }`}
         >
-          <Home className="w-5 h-5" />
-          <span className="text-[11px] font-medium">Home</span>
+          <Users className="w-5 h-5" />
+          <span className="text-[11px] font-medium">Communities</span>
         </button>
         <button
           type="button"
@@ -134,7 +124,7 @@ function MainAppShell() {
           className="flex flex-col items-center gap-1 text-text-muted hover:text-slate-900 p-2 min-w-[56px] focus:outline-none"
         >
           <Search className="w-5 h-5" />
-          <span className="text-[11px] font-medium">Search</span>
+          <span className="text-[11px] font-medium">Items</span>
         </button>
         <button
           type="button"
@@ -154,7 +144,10 @@ function MainAppShell() {
         </button>
         <button
           type="button"
-          onClick={() => setCurrentScreen(user ? 'profile' : 'login')}
+          onClick={() => {
+            setSelectedCommunityId(null);
+            setCurrentScreen(user ? 'profile' : 'login');
+          }}
           className={`flex flex-col items-center gap-1 p-2 min-w-[56px] focus:outline-none ${
             currentScreen === 'profile' ? 'text-primary' : 'text-text-muted'
           }`}

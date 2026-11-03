@@ -55,6 +55,16 @@ services:
     volumes:
       - mailpit-data:/data
 
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: borrowloop-mailpit
+    restart: always
+    ports:
+      - '1025:1025'
+      - '8025:8025'
+    volumes:
+      - mailpit-data:/data
+
 volumes:
   mongo-data:
   redis-data:

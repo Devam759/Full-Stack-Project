@@ -77,6 +77,26 @@ export const BUSINESS_CONFIG = Object.freeze({
   STRIKE_2_BAN_SECONDS: 7 * 24 * 60 * 60,
   STRIKE_3_ACTION: 'permanent_ban',
 
+  // Communities Limits & Rules
+  MAX_COMMUNITIES_JOINED: 20,
+  MAX_COMMUNITIES_CREATED: 5,
+  MAX_NEARBY_COMMUNITIES: 50,
+  COMMUNITY_INVITE_CODE_LENGTH: 10,
+  COMMUNITY_REQUEST_COOLDOWN_HOURS: 24,
+  COMMUNITY_REQUEST_COOLDOWN_SECONDS: 24 * 60 * 60,
+  RESERVED_COMMUNITY_NAMES: Object.freeze([
+    'admin',
+    'root',
+    'support',
+    'help',
+    'api',
+    'borrowloop',
+    'system',
+    'official',
+    'portal',
+    'care',
+  ]),
+
   // Moderation & Reports
   ITEM_REPORTS_HIDE_THRESHOLD: 3,
   PROHIBITED_CATEGORIES: Object.freeze([
