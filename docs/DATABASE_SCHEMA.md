@@ -29,7 +29,7 @@ Indexes: `(itemId, day)` unique.
 
 ## bookings
 
-`itemId, lenderId, borrowerId, startDate, endDate, dueAt, days, rentPaise, depositPaise, lateFeePerDayPaise, commissionBps, status, statusHistory[], pickupAt?, returnAt?, lateChargePaise, extension? { requestedEndDate, extraRentPaise, status }, cancelledBy?, cancelReason?, handoverCodeHash?, expiresAt`
+`itemId, lenderId, borrowerId, startDate, endDate, dueAt, days, rentPaise, depositPaise, lateFeePerDayPaise, commissionBps, status, statusHistory[], pickupAt?, returnAt?, lateChargePaise, extensions[] { id, requestedEndDate, extraDays, extraRentPaise, status, requestedAt, respondedAt?, expiresAt?, rejectionReason? }, cancelledBy?, cancelReason?, handoverCodeHash?, expiresAt`
 Indexes: `(borrowerId, status)`, `(lenderId, status)`, `(itemId, startDate, endDate)`, `(status, expiresAt)`, `(status, dueAt)`.
 
 ## handovers
@@ -42,32 +42,52 @@ Indexes: `(borrowerId, status)`, `(lenderId, status)`, `(itemId, startDate, endD
 
 ## ledger_entries
 
-`txnId, bookingId?, account, userId?, amountPaise (signed), type, idempotencyKey, meta`
-Indexes: `txnId`, `(userId, createdAt)`, `idempotencyKey` unique where present. Append-only: no update or delete.
+`txnId, bookingId?, account, userId?, amountPaise (signed), balanceAfterPaise, type, meta`
+Indexes: `txnId`, `(userId, createdAt)`. Append-only: no update or delete.
 
-## conversations and messages
+## ledger_operations
 
-conversations: `bookingId, participantIds[2], lastMessageAt`
-messages: `conversationId, senderId, type (text|pin|system), text?, pin? { lat, lng, label }, readBy[], createdAt`
-Indexes: `(conversationId, createdAt)`.
+`bookingId, operationType, opRef, createdAt`
+Unique index: `(bookingId, operationType, opRef)`. Prevents duplicate money movements across retries and concurrent workers.
 
-## ratings
+## idempotency_keys
 
-`bookingId, fromUserId, toUserId, stars, comment?, visibleAt, revealed`
-Indexes: `(bookingId, fromUserId)` unique, `(toUserId, revealed)`.
+`userId, key, requestHash, statusCode, responseBody, createdAt, expiresAt (TTL)`
+Indexes: `(userId, key)` unique, `expiresAt` TTL (86400s).
 
-## disputes
+## reconciliation_runs
 
-`bookingId, type (damage|not_returned|no_show|other), raisedBy, status (open|in_review|decided|appealed|closed), assignedAgentId?, decision { depositToLenderPaise, depositToBorrowerPaise, rentOutcome, note }, decidedAt, appeal? { by, reason, status, decidedBy }`
+`runId, startedAt, completedAt, status, totalWalletsChecked, mismatchesCount, mismatches[], orphanLedgerUsersCount, orphanLedgerUsers[], globalLedgerSum, durationMs, error?`
 
-## reports
+## domain_events
 
-`targetType (item|user|message), targetId, reporterId, reason, details?, status (open|actioned|dismissed), reviewedBy?`
-Indexes: `(targetType, targetId)`, `(status)`.
+`eventKey (unique), type, bookingId?, actorId?, payload, timestamp, status (pending|processing|processed|failed|dead_letter), retryCount, nextRetryAt, processedAt, error?, lockedAt`
+Indexes: `eventKey` unique, `(bookingId, type)`, `(status, nextRetryAt, lockedAt, createdAt)`.
+
+## conversations
+
+`bookingId (unique), participantIds[2], lastMessageAt, confirmedPin? { lat, lng, label, proposedBy, confirmedBy, confirmedAt }, createdAt, updatedAt`
+Indexes: `bookingId` unique, `(participantIds)`.
+
+## messages
+
+`conversationId, bookingId, senderId, clientMessageId, type (text|pin|system), text?, pin? { lat, lng, label, status: proposed|confirmed|superseded }, readBy[], createdAt, updatedAt`
+Indexes: `(conversationId, createdAt)`, `(bookingId, createdAt)`, `(conversationId, senderId, clientMessageId)` unique.
+
+## socket_sessions (Redis)
+
+Tracked in Redis sorted set `user_sockets:${userId}`:
+
+- Member: `socket.id`
+- Score: timestamp of last heartbeat (ms)
+- Heartbeat: refreshed every 2 seconds by active sockets
+- Prune window: entries older than 5,000 ms (`HEARTBEAT_TTL_MS`) pruned on connect via `ZREMRANGEBYSCORE`
+- Limit: `SOCKET_MAX_CONNECTIONS_PER_USER` (5 concurrent connections)
 
 ## notifications
 
-`userId, type, title, body, link, readAt?, emailSent` with a TTL index for old rows.
+`userId, type, title, body, link?, metadata, readAt?, emailSent, dedupeKey? (unique sparse), createdAt, updatedAt`
+Indexes: `(userId, readAt, createdAt: -1)`, `(createdAt)` with TTL index (expireAfterSeconds: 7776000 [90 days]), `dedupeKey` unique sparse.
 
 ## blocks
 

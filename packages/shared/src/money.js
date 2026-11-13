@@ -26,8 +26,29 @@ export function assertPaise(value, name = 'amount', allowNegative = false) {
 }
 
 /**
+ * Validates integer grouping format for Western (1,000 / 1,000,000) and Indian (1,00,000 / 10,00,000) systems.
+ *
+ * @param {string} intStr
+ * @returns {boolean}
+ */
+function isValidIntegerGrouping(intStr) {
+  // 1. Plain digits without commas
+  if (/^\d+$/.test(intStr)) return true;
+
+  // 2. Standard 3-digit grouping (e.g. 1,000 or 1,000,000)
+  if (/^\d{1,3}(,\d{3})+$/.test(intStr)) return true;
+
+  // 3. Indian numbering system grouping (e.g. 1,00,000 or 10,00,000 or 1,00,00,000)
+  if (/^\d{1,2}(,\d{2})*,\d{3}$/.test(intStr)) return true;
+
+  return false;
+}
+
+/**
  * Converts a rupee amount (number or string) to integer paise in a float-safe manner.
  * Handles float inaccuracies like (0.1 + 0.2) while strictly rejecting fractional paise (> 2 decimals).
+ * Accepts "1,000" and Indian grouping "1,00,000", but rejects malformed grouping such as "1,00" and "1,,0".
+ * Strictly rejects negatives, empty, NaN, and amounts with more than 2 decimal places.
  *
  * @param {number|string} rupees
  * @returns {number} integer paise
@@ -35,30 +56,56 @@ export function assertPaise(value, name = 'amount', allowNegative = false) {
 export function toPaise(rupees) {
   if (typeof rupees === 'string') {
     const trimmed = rupees.trim();
-    if (!/^-?\d+(\.\d+)?$/.test(trimmed)) {
-      throw new TypeError(`[Money] Invalid rupees string format: "${rupees}"`);
+    if (trimmed.length === 0) {
+      throw new TypeError('[Money] Empty string is not a valid amount');
     }
-    const isNegative = trimmed.startsWith('-');
-    const absVal = trimmed.replace(/^-/, '');
-    const [intPart, fracPart = ''] = absVal.split('.');
 
-    if (fracPart.length > 2) {
-      throw new RangeError(
-        `[Money] Rupees cannot have more than 2 decimal places (fractional paise): "${rupees}"`,
+    if (trimmed.startsWith('-')) {
+      throw new RangeError(`[Money] Negative amounts not allowed: "${rupees}"`);
+    }
+
+    const parts = trimmed.split('.');
+    if (parts.length > 2) {
+      throw new TypeError(
+        `[Money] Invalid rupees string format with multiple decimal points: "${rupees}"`,
       );
     }
 
-    const paddedFrac = (fracPart + '00').slice(0, 2);
-    const paise = Number(intPart) * 100 + Number(paddedFrac);
+    const [intPart, fracPart] = parts;
+    if (!intPart || !isValidIntegerGrouping(intPart)) {
+      throw new TypeError(`[Money] Invalid rupees string format: "${rupees}"`);
+    }
+
+    if (fracPart !== undefined) {
+      if (!/^\d+$/.test(fracPart)) {
+        throw new TypeError(`[Money] Invalid decimal format: "${rupees}"`);
+      }
+      if (fracPart.length > 2) {
+        throw new RangeError(
+          `[Money] Rupees cannot have more than 2 decimal places (fractional paise): "${rupees}"`,
+        );
+      }
+    }
+
+    const cleanInt = intPart.replace(/,/g, '');
+    const paddedFrac = ((fracPart || '') + '00').slice(0, 2);
+    const paise = Number(cleanInt) * 100 + Number(paddedFrac);
+
     if (!Number.isSafeInteger(paise)) {
       throw new RangeError(`[Money] Amount exceeds safe integer limits: "${rupees}"`);
     }
-    return isNegative ? -paise : paise;
+    return paise;
   }
 
   if (typeof rupees === 'number') {
+    if (Number.isNaN(rupees)) {
+      throw new TypeError('[Money] Rupees must be a finite number, received: NaN');
+    }
     if (!Number.isFinite(rupees)) {
       throw new TypeError(`[Money] Rupees must be a finite number, received: ${rupees}`);
+    }
+    if (rupees < 0) {
+      throw new RangeError(`[Money] Negative amounts not allowed: ${rupees}`);
     }
 
     // Convert using nearest paisa to eliminate IEEE-754 binary float drift (e.g. 0.1 + 0.2 = 0.30000000000000004)

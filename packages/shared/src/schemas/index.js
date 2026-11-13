@@ -3,3 +3,7 @@ export * from './auth.js';
 export * from './user.js';
 export * from './community.js';
 export * from './item.js';
+export * from './wallet.js';
+export * from './booking.js';
+export * from './chat.js';
+export * from './notification.js';

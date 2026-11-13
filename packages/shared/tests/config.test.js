@@ -61,4 +61,23 @@ describe('packages/shared/config', () => {
       'disputed',
     ]);
   });
+
+  it('matches wallet and ledger configuration for Phase 4', () => {
+    expect(BUSINESS_CONFIG.MIN_WALLET_ADD_PAISE).toBe(10000); // Rs 100
+    expect(BUSINESS_CONFIG.MAX_WALLET_ADD_PAISE).toBe(5000000); // Rs 50,000
+    expect(BUSINESS_CONFIG.MIN_WALLET_WITHDRAW_PAISE).toBe(10000);
+    expect(BUSINESS_CONFIG.MAX_WALLET_WITHDRAW_PAISE).toBe(5000000);
+    expect(BUSINESS_CONFIG.IDEMPOTENCY_TTL_SECONDS).toBe(86400); // 24 hours
+    expect(BUSINESS_CONFIG.RECONCILIATION_BATCH_SIZE).toBe(100);
+    expect(BUSINESS_CONFIG.LEDGER_ACCOUNTS).toEqual([
+      'available',
+      'frozen',
+      'pending',
+      'platform_revenue',
+      'demo_funding',
+    ]);
+    expect(BUSINESS_CONFIG.LEDGER_ENTRY_TYPES).toContain('commission');
+    expect(BUSINESS_CONFIG.LEDGER_ENTRY_TYPES).toContain('extension_hold');
+    expect(BUSINESS_CONFIG.LEDGER_ENTRY_TYPES).toContain('deposit_release');
+  });
 });

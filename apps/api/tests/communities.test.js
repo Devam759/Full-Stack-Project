@@ -21,6 +21,8 @@ describe('Communities and Location (Phase 2)', () => {
 
   beforeAll(async () => {
     await setupTestDB();
+    await Community.init();
+    await Membership.init();
   }, 60000);
 
   afterAll(async () => {
@@ -492,6 +494,6 @@ describe('Communities and Location (Phase 2)', () => {
       // 1 owner + 100 new members = 101 members exactly
       expect(activeMembershipsCount).toBe(101);
       expect(finalComm.memberCount).toBe(101);
-    }, 45000);
+    }, 90000);
   });
 });

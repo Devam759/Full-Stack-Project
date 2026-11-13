@@ -54,6 +54,60 @@ describe('packages/shared/money', () => {
       expect(() => toPaise(undefined)).toThrow(TypeError);
       expect(() => toPaise(NaN)).toThrow(TypeError);
       expect(() => toPaise(Infinity)).toThrow(TypeError);
+      expect(() => toPaise('')).toThrow(TypeError);
+      expect(() => toPaise('   ')).toThrow(TypeError);
+    });
+
+    it('rejects negative amounts in both number and string forms', () => {
+      expect(() => toPaise(-10)).toThrow(RangeError);
+      expect(() => toPaise('-10')).toThrow(RangeError);
+      expect(() => toPaise('-1,000')).toThrow(RangeError);
+      expect(() => toPaise(-0.01)).toThrow(RangeError);
+    });
+
+    it('accepts Western ("1,000") and Indian ("1,00,000") number grouping formats', () => {
+      expect(toPaise('1,000')).toBe(100000);
+      expect(toPaise('10,000')).toBe(1000000);
+      expect(toPaise('1,00,000')).toBe(10000000);
+      expect(toPaise('10,00,000')).toBe(100000000);
+      expect(toPaise('1,00,00,000')).toBe(1000000000);
+      expect(toPaise('1,000.50')).toBe(100050);
+      expect(toPaise('1,00,000.75')).toBe(10000075);
+    });
+
+    it('rejects malformed number grouping such as "1,00" and "1,,0"', () => {
+      expect(() => toPaise('1,00')).toThrow(TypeError);
+      expect(() => toPaise('1,,0')).toThrow(TypeError);
+      expect(() => toPaise('1,0000')).toThrow(TypeError);
+      expect(() => toPaise(',100')).toThrow(TypeError);
+      expect(() => toPaise('100,')).toThrow(TypeError);
+      expect(() => toPaise('1,000,00')).toThrow(TypeError);
+      expect(() => toPaise('1,00,0000')).toThrow(TypeError);
+    });
+
+    it('verifies the full Stage 1.4 toPaise test matrix', () => {
+      // 1. "1,000" -> 100,000 paise
+      expect(toPaise('1,000')).toBe(100000);
+      // 2. "1,00,000" -> 10,000,000 paise
+      expect(toPaise('1,00,000')).toBe(10000000);
+      // 3. "1,00" -> rejects (invalid grouping)
+      expect(() => toPaise('1,00')).toThrow(TypeError);
+      // 4. "1,,0" -> rejects (malformed commas)
+      expect(() => toPaise('1,,0')).toThrow(TypeError);
+      // 5. "-1" -> rejects (negative)
+      expect(() => toPaise('-1')).toThrow(RangeError);
+      // 6. "" -> rejects (empty)
+      expect(() => toPaise('')).toThrow(TypeError);
+      // 7. "0.001" -> rejects (fractional paise)
+      expect(() => toPaise('0.001')).toThrow(RangeError);
+      // 8. 0.1 + 0.2 -> float safe 30 paise
+      expect(toPaise(0.1 + 0.2)).toBe(30);
+      // 9. "  50  " -> trimmed to 5000 paise
+      expect(toPaise('  50  ')).toBe(5000);
+      // 10. "1e3" -> rejects scientific notation in string
+      expect(() => toPaise('1e3')).toThrow(TypeError);
+      // 11. Arabic-Indic digit (e.g. "١٢٣") -> rejects non-ASCII digits
+      expect(() => toPaise('١٢٣')).toThrow(TypeError);
     });
   });
 

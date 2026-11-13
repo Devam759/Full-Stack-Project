@@ -21,6 +21,9 @@ import communityRouter from './modules/communities/communityRoutes.js';
 import adminCommunityRouter from './modules/admin/adminCommunityRoutes.js';
 import locationRouter from './modules/locations/locationRoutes.js';
 import itemRouter from './modules/items/itemRoutes.js';
+import walletRouter from './modules/wallet/walletRoutes.js';
+import bookingRouter from './modules/bookings/bookingRoutes.js';
+import notificationRouter from './modules/notifications/notificationRoutes.js';
 
 export function createApp() {
   const app = express();
@@ -67,13 +70,12 @@ export function createApp() {
   }
 
   // Redis-backed rate limiting base (Requirement 11)
-  const isTest = process.env.NODE_ENV === 'test';
   const redis = getRedisClient();
   app.use(
     createRateLimiter({
       redis,
       windowSeconds: 60,
-      maxRequests: isTest ? 10_000 : 120, // High ceiling in test environment for concurrency stress testing
+      maxRequests: () => (process.env.NODE_ENV === 'test' ? 10_000 : 120), // High ceiling in test environment for concurrency stress testing
       keyPrefix: 'rl:global',
     }),
   );
@@ -91,6 +93,9 @@ export function createApp() {
   app.use('/v1/admin/communities', adminCommunityRouter);
   app.use('/v1/locations', locationRouter);
   app.use('/v1/items', itemRouter);
+  app.use('/v1/wallet', walletRouter);
+  app.use('/v1/bookings', bookingRouter);
+  app.use('/v1/notifications', notificationRouter);
 
   // 404 handler
   app.use((req, _res, next) => {

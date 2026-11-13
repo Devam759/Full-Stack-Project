@@ -1,22 +1,35 @@
 import mongoose from 'mongoose';
-import { AppError, ERROR_CODES } from '@borrowloop/shared';
+import { AppError, ERROR_CODES, BUSINESS_CONFIG } from '@borrowloop/shared';
 import User from '../../models/User.js';
 import Block from '../../models/Block.js';
 import RefreshToken from '../../models/RefreshToken.js';
 import Community from '../../models/Community.js';
 import Membership from '../../models/Membership.js';
+import Wallet from '../../models/Wallet.js';
+import Booking from '../../models/Booking.js';
 import { verifyPassword } from '../../common/crypto.js';
 import { isValidCloudinaryPhotoUrl } from '../../services/uploadService.js';
+import { disconnectUser } from '../../sockets/socketServer.js';
 
 /**
- * Stub function to check if a user has active bookings or frozen wallet funds.
- * Will be fully integrated in Phase 4 (Wallet) and Phase 5 (Bookings).
+ * Checks if a user has active bookings or frozen wallet funds (Rule 90).
+ * Prevents account deletion while bookings are open or money is locked.
  *
- * @param {string} _userId
+ * @param {string | mongoose.Types.ObjectId} userId
  * @returns {Promise<boolean>}
  */
-export async function hasOpenBookingsOrFrozenFunds(_userId) {
-  return false;
+export async function hasOpenBookingsOrFrozenFunds(userId) {
+  if (!userId) return false;
+
+  const wallet = await Wallet.findOne({ userId, frozenPaise: { $gt: 0 } });
+  if (wallet) return true;
+
+  const activeBooking = await Booking.exists({
+    $or: [{ borrowerId: userId }, { lenderId: userId }],
+    status: { $in: BUSINESS_CONFIG.ACTIVE_BOOKING_STATUSES },
+  });
+
+  return Boolean(activeBooking);
 }
 
 /**
@@ -101,7 +114,47 @@ export async function blockUser(blockerId, blockedId) {
     { upsert: true, new: true },
   );
 
+  // Item 11: Call disconnectUser across instances on block
+  try {
+    disconnectUser(blockedId, 'User blocked');
+    disconnectUser(blockerId, 'User blocked');
+  } catch {
+    // Non-blocking socket disconnect
+  }
+
   return true;
+}
+
+/**
+ * Bans a user and forcefully severs active socket connections across instances.
+ */
+export async function banUser(userId) {
+  const user = await User.findByIdAndUpdate(userId, { status: 'banned' }, { new: true });
+  if (!user) {
+    throw new AppError(ERROR_CODES.NOT_FOUND, 'User not found', 404);
+  }
+  try {
+    disconnectUser(userId, 'Account banned');
+  } catch {
+    // Sockets may not be initialized in this process
+  }
+  return user;
+}
+
+/**
+ * Freezes a user and forcefully severs active socket connections across instances.
+ */
+export async function freezeUser(userId) {
+  const user = await User.findByIdAndUpdate(userId, { status: 'frozen' }, { new: true });
+  if (!user) {
+    throw new AppError(ERROR_CODES.NOT_FOUND, 'User not found', 404);
+  }
+  try {
+    disconnectUser(userId, 'Account frozen');
+  } catch {
+    // Sockets may not be initialized in this process
+  }
+  return user;
 }
 
 /**
@@ -191,6 +244,14 @@ export async function deleteAccount(userId, password) {
     await RefreshToken.updateMany({ userId: user._id }, { revokedAt: new Date() }, { session });
 
     await session.commitTransaction();
+
+    // Item 11: Call disconnectUser across instances on account deletion
+    try {
+      disconnectUser(userId, 'Account deleted');
+    } catch {
+      // Sockets may not be initialized in this process
+    }
+
     return true;
   } catch (err) {
     await session.abortTransaction();

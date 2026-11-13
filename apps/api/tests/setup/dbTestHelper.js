@@ -3,6 +3,9 @@ import { MongoMemoryReplSet } from 'mongodb-memory-server';
 
 let replSet = null;
 
+export const DEFAULT_DOCKER_MONGODB_URI =
+  'mongodb://127.0.0.1:27018/borrowloop_test?replicaSet=rs0&directConnection=true';
+
 /**
  * Initializes and connects to a MongoDB replica set for integration tests.
  * Uses local replica set if MONGODB_TEST_URI is set, otherwise spins up MongoMemoryReplSet.
@@ -33,7 +36,16 @@ export async function setupTestDB() {
     },
   });
 
-  const uri = replSet.getUri();
+  let uri = replSet.getUri();
+  try {
+    const url = new URL(uri);
+    const workerId = process.env.VITEST_POOL_ID || process.pid;
+    const rand = Math.random().toString(36).substring(2, 7);
+    url.pathname = `/borrowloop_test_${workerId}_${rand}`;
+    uri = url.toString();
+  } catch {
+    // Fallback to original
+  }
   await mongoose.connect(uri);
 
   return { uri, isMemory: true };
@@ -66,7 +78,11 @@ export async function teardownTestDB() {
     await mongoose.disconnect();
   }
   if (replSet) {
-    await replSet.stop();
+    try {
+      await replSet.stop({ force: true });
+    } catch {
+      // Ignore cleanup error
+    }
     replSet = null;
   }
 }

@@ -33,14 +33,17 @@ jobs:
 
       - name: Start MongoDB Replica Set (without keyfile, directConnection=true)
         run: |
-          docker run -d --name mongo-ci -p 27017:27017 mongo:7.0 --replSet rs0 --bind_ip_all
+          docker run -d --name mongo-ci -p 27018:27018 mongo:7.0 --replSet rs0 --bind_ip_all --port 27018
           sleep 4
-          docker exec mongo-ci mongosh --eval "rs.initiate({_id:'rs0',members:[{_id:0,host:'127.0.0.1:27017'}]})"
+          docker exec mongo-ci mongosh --port 27018 --eval "rs.initiate({_id:'rs0',members:[{_id:0,host:'127.0.0.1:27018'}]})"
           sleep 2
-          docker exec mongo-ci mongosh --eval "rs.status()"
+          docker exec mongo-ci mongosh --port 27018 --eval "rs.status()"
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Check dependency vulnerabilities (npm audit)
+        run: npm audit --audit-level=high
 
       - name: Check code formatting (Prettier)
         run: npm run format:check
@@ -48,12 +51,12 @@ jobs:
       - name: Lint codebase (ESLint)
         run: npm run lint
 
-      - name: Run all tests (Vitest)
+      - name: Run all tests with skipped-test guard (Vitest)
         env:
-          MONGODB_TEST_URI: mongodb://127.0.0.1:27017/borrowloop_test?replicaSet=rs0&directConnection=true
+          MONGODB_TEST_URI: mongodb://127.0.0.1:27018/borrowloop_test?replicaSet=rs0&directConnection=true
           REDIS_URL: redis://127.0.0.1:6379
           NODE_ENV: test
-        run: npm test
+        run: npm run test:ci
 
       - name: Build applications
         run: npm run build

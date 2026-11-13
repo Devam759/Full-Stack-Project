@@ -8,7 +8,7 @@ const envSchema = z.object({
   PORT: z.coerce.number().default(4000),
   MONGODB_URI: z
     .string()
-    .default('mongodb://127.0.0.1:27017/borrowloop?replicaSet=rs0&directConnection=true'),
+    .default('mongodb://127.0.0.1:27018/borrowloop?replicaSet=rs0&directConnection=true'),
   REDIS_URL: z.string().default('redis://127.0.0.1:6379'),
   JWT_ACCESS_SECRET: z.string().min(16).default('dev_jwt_access_secret_min_32_chars_ok'),
   JWT_REFRESH_SECRET: z.string().min(16).default('dev_jwt_refresh_secret_min_32_chars_ok'),

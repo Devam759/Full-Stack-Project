@@ -4,8 +4,15 @@ import logger from '../common/logger.js';
 
 let emailQueue = null;
 
+export function setEmailQueue(queue) {
+  emailQueue = queue;
+}
+
 export function getEmailQueue() {
-  if (!emailQueue && process.env.NODE_ENV !== 'test') {
+  if (
+    !emailQueue &&
+    (process.env.NODE_ENV !== 'test' || process.env.ENABLE_TEST_EMAIL_QUEUE === 'true')
+  ) {
     try {
       const redis = getRedisClient();
       if (redis) {
@@ -53,7 +60,16 @@ export async function queueEmail(emailData) {
   }
 }
 
+export async function closeEmailQueue() {
+  if (emailQueue) {
+    await emailQueue.close().catch(() => {});
+    emailQueue = null;
+  }
+}
+
 export default {
   getEmailQueue,
+  setEmailQueue,
   queueEmail,
+  closeEmailQueue,
 };

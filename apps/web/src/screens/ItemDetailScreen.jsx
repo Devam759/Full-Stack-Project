@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import { formatPaise, BUSINESS_CONFIG } from '@borrowloop/shared';
 
-export function ItemDetailScreen({ itemId, onBack }) {
+export function ItemDetailScreen({ itemId, onBack, onRequestBooking }) {
   const [item, setItem] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -361,11 +361,11 @@ export function ItemDetailScreen({ itemId, onBack }) {
 
         <button
           type="button"
-          onClick={() =>
-            alert(
-              `Requesting to borrow "${item.title}". Full booking request state machine will be activated in Phase 5!`,
-            )
-          }
+          onClick={() => {
+            if (onRequestBooking) {
+              onRequestBooking(item._id);
+            }
+          }}
           className="px-5 py-2.5 bg-primary text-white text-xs font-semibold rounded-xl hover:bg-primary-dark transition shadow-md"
         >
           Request to Borrow

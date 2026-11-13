@@ -15,4 +15,5 @@ yarn-error.log*
 .idea
 *.swp
 *.swo
+.test-results.json
 

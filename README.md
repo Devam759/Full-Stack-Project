@@ -68,7 +68,7 @@ npm install
 
 ### 3. Start Local Database & Redis (Replica Set)
 
-Start MongoDB (with transactions enabled, single-node replica set `rs0`, `directConnection=true`) and Redis:
+Start MongoDB on port 27018 (with transactions enabled, single-node replica set `rs0`, `directConnection=true`), Redis, and Mailpit:
 
 ```bash
 docker compose up -d
@@ -77,7 +77,7 @@ docker compose up -d
 Verify the replica set status:
 
 ```bash
-docker compose exec mongo mongosh --eval "rs.status().ok"
+docker compose exec mongo mongosh --port 27018 --eval "rs.status().ok"
 ```
 
 ### 4. Setup Environment Files
@@ -110,9 +110,18 @@ npm run dev:portal  # Care & Admin portal on http://localhost:5174
 
 ### 6. Running Tests & Linters
 
-- **Run all unit & integration tests**:
+- **Run tests against in-memory replica set (Default)**:
   ```bash
   npm test
+  ```
+- **Run tests against the Docker replica set (Port 27018)**:
+  ```bash
+  # Windows PowerShell:
+  $env:MONGODB_TEST_URI="mongodb://127.0.0.1:27018/borrowloop_test?replicaSet=rs0&directConnection=true"
+  npm test
+
+  # Linux / macOS:
+  MONGODB_TEST_URI="mongodb://127.0.0.1:27018/borrowloop_test?replicaSet=rs0&directConnection=true" npm test
   ```
 - **Lint the entire monorepo**:
   ```bash
@@ -126,3 +135,18 @@ npm run dev:portal  # Care & Admin portal on http://localhost:5174
   ```bash
   npm run build
   ```
+
+### 7. Clean Archive Creation (Excluding node_modules and dist)
+
+To package or archive the repository cleanly without dependencies and build artifacts:
+
+```bash
+# Using Git archive:
+git archive -o borrowloop-clean.zip HEAD
+
+# Or using PowerShell:
+Compress-Archive -Path (Get-ChildItem -Exclude 'node_modules', 'dist', '.git') -DestinationPath borrowloop-clean.zip
+
+# Or using zip/tar directly:
+zip -r borrowloop-clean.zip . -x "**/node_modules/*" -x "**/dist/*" -x "**/.git/*" -x "**/.turbo/*"
+```

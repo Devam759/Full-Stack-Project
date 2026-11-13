@@ -9,17 +9,55 @@ export const BUSINESS_CONFIG = Object.freeze({
   CURRENCY: 'INR',
   PAISE_PER_RUPEE: 100,
   WALLET_CAP_PAISE: 50_000_00, // Rs 50,000 in integer paise
+  MIN_WALLET_ADD_PAISE: 100_00, // Min Rs 100 add
+  MAX_WALLET_ADD_PAISE: 50_000_00, // Max Rs 50,000 add (subject to cap)
+  MIN_WALLET_WITHDRAW_PAISE: 100_00, // Min Rs 100 withdraw
+  MAX_WALLET_WITHDRAW_PAISE: 50_000_00, // Max Rs 50,000 withdraw
   COMMISSION_BPS: 1500, // 15% (1500 basis points)
   COMMISSION_APPLIES_TO: Object.freeze(['rent', 'late_charge']),
   COMMISSION_DOES_NOT_APPLY_TO: Object.freeze(['deposit_compensation']),
 
+  // Ledger & Wallet Architecture (Phase 4)
+  TRANSACTION_RETRY_CAP: 30,
+  IDEMPOTENCY_TTL_SECONDS: 24 * 60 * 60, // 24 hours
+  RECONCILIATION_BATCH_SIZE: 100,
+  MAX_RECONCILIATION_STORED_MISMATCHES: 100,
+  RECONCILIATION_RESUME_TIMEOUT_MS: 15 * 60 * 1000, // 15 mins
+  LEDGER_ACCOUNTS: Object.freeze([
+    'available',
+    'frozen',
+    'pending',
+    'platform_revenue',
+    'demo_funding',
+  ]),
+  LEDGER_ENTRY_TYPES: Object.freeze([
+    'deposit_funds',
+    'withdraw_funds',
+    'booking_hold',
+    'extension_hold',
+    'deposit_release',
+    'booking_cancel_refund',
+    'settlement',
+    'commission',
+  ]),
+  WALLET_RATE_LIMITS: Object.freeze({
+    ADD_FUNDS: Object.freeze({ windowSeconds: 60, maxRequests: 10 }),
+    WITHDRAW_FUNDS: Object.freeze({ windowSeconds: 60, maxRequests: 10 }),
+    TRANSACTIONS_LIST: Object.freeze({ windowSeconds: 60, maxRequests: 60 }),
+  }),
+
   // Booking Limits
+  TIMEZONE: 'Asia/Kolkata',
   MIN_BOOKING_DAYS: 1,
   MAX_BOOKING_DAYS: 30,
   REQUEST_EXPIRY_HOURS: 24,
   REQUEST_EXPIRY_SECONDS: 24 * 60 * 60,
   LATE_CANCEL_THRESHOLD_HOURS: 6,
   LATE_CANCEL_THRESHOLD_SECONDS: 6 * 60 * 60,
+  LATE_CANCEL_COMPENSATION_LENDER: false,
+  MAX_BOOKING_EXTENSIONS: 3,
+  EXTENSION_EXPIRY_HOURS: 24,
+  EXTENSION_EXPIRY_SECONDS: 24 * 60 * 60,
   OVERDUE_DISPUTE_DAYS: 3,
   OVERDUE_DISPUTE_SECONDS: 3 * 24 * 60 * 60,
   RETURN_CONFIRMATION_WINDOW_HOURS: 24,
@@ -233,15 +271,73 @@ export const BUSINESS_CONFIG = Object.freeze({
     PEAK_CONCURRENT_SOCKETS: 2_000,
   }),
 
-  // Background Job Intervals (in minutes/cron)
+  // Background Job Intervals (in minutes/cron per docs/ARCHITECTURE.md Section 8)
   BACKGROUND_JOBS: Object.freeze({
     EXPIRE_REQUESTS_MINUTES: 5,
     EXPIRE_PICKUPS_MINUTES: 15,
+    EXPIRE_EXTENSIONS_MINUTES: 15,
+    EXPIRY_BATCH_SIZE: 100,
     DUE_REMINDERS_MINUTES: 15,
     ACCRUE_LATE_CHARGES_MINUTES: 60,
     AUTO_COMPLETE_RETURNS_MINUTES: 15,
     REVEAL_RATINGS_HOURS: 24,
     LEDGER_RECONCILIATION_CRON: '0 2 * * *',
+    PICKUP_REMINDERS_MINUTES: 15,
+    OUTBOX_DISPATCHER_SECONDS: 10,
+    DUE_REMINDERS_THRESHOLD_HOURS: 2,
+    PICKUP_REMINDERS_THRESHOLD_HOURS: 2,
+  }),
+
+  // Chat Configuration (Phase 6)
+  CHAT: Object.freeze({
+    MAX_MESSAGE_LENGTH: 1000,
+    MESSAGE_TYPES: Object.freeze(['text', 'pin', 'system']),
+    PIN_STATUSES: Object.freeze(['proposed', 'confirmed']),
+    TERMINAL_STATUSES: Object.freeze(['completed', 'cancelled', 'expired']),
+    MAX_PIN_RADIUS_KM: 50,
+    SOCKET_MAX_PAYLOAD_BYTES: 10 * 1024,
+    SOCKET_MAX_CONNECTIONS_PER_USER: 5,
+    RATE_LIMITS: Object.freeze({
+      SEND_MESSAGE_USER: Object.freeze({ windowSeconds: 60, maxRequests: 30 }),
+      SEND_MESSAGE_CONV: Object.freeze({ windowSeconds: 60, maxRequests: 60 }),
+      PROPOSE_PIN: Object.freeze({ windowSeconds: 60, maxRequests: 10 }),
+      CONFIRM_PIN: Object.freeze({ windowSeconds: 60, maxRequests: 10 }),
+    }),
+    DEFAULT_PAGE_LIMIT: 30,
+    MAX_PAGE_LIMIT: 100,
+  }),
+
+  // Notifications Configuration (Phase 6)
+  NOTIFICATIONS: Object.freeze({
+    TTL_SECONDS: 90 * 24 * 60 * 60, // 90 days per docs/DATABASE_SCHEMA.md
+    DEFAULT_PAGE_LIMIT: 20,
+    MAX_PAGE_LIMIT: 50,
+    TYPES: Object.freeze([
+      'booking_requested',
+      'booking_accepted',
+      'booking_rejected',
+      'booking_cancelled',
+      'extension_requested',
+      'extension_accepted',
+      'extension_rejected',
+      'pickup_reminder',
+      'due_reminder',
+      'pickup_expired',
+      'message_received',
+      'pin_proposed',
+      'pin_confirmed',
+      'reconciliation_mismatch',
+    ]),
+  }),
+
+  // Outbox Dispatcher Configuration (Phase 6)
+  OUTBOX: Object.freeze({
+    POLL_INTERVAL_MS: 5000,
+    BATCH_SIZE: 50,
+    MAX_RETRIES: 5,
+    INITIAL_BACKOFF_MS: 1000,
+    MAX_BACKOFF_MS: 60000,
+    LEASE_TIMEOUT_MS: 5 * 60 * 1000, // 5 min lease for crash recovery
   }),
 });
 

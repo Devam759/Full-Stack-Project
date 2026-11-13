@@ -55,6 +55,7 @@ export async function runInTransaction(workFn, maxRetries = 30) {
         err.errorLabels?.includes?.('TransientTransactionError') ||
         err.message?.includes('Write conflict') ||
         err.message?.includes('WriteConflict') ||
+        err.message?.includes('catalog changes') ||
         err.code === 112;
       if (isTransient && attempts < maxRetries) {
         await new Promise((resolve) => setTimeout(resolve, Math.floor(Math.random() * 80 + 20)));
@@ -304,53 +305,48 @@ export async function createCommunity({ userId, name, description, type, locatio
 
   const inviteCode = type === 'private' ? generateInviteCode() : undefined;
 
-  // Run inside MongoDB transaction
-  const session = await mongoose.startSession();
-  session.startTransaction();
+  // Run inside MongoDB transaction with retry
+  return await runInTransaction(async (session) => {
+    try {
+      const community = await Community.create(
+        [
+          {
+            name,
+            slug,
+            description,
+            type,
+            ownerId: userId,
+            location: { type: 'Point', coordinates: roundedCoordinates },
+            city,
+            memberCount: 1,
+            inviteCode,
+            status: 'active',
+          },
+        ],
+        { session },
+      );
 
-  try {
-    const community = await Community.create(
-      [
-        {
-          name,
-          slug,
-          description,
-          type,
-          ownerId: userId,
-          location: { type: 'Point', coordinates: roundedCoordinates },
-          city,
-          memberCount: 1,
-          inviteCode,
-          status: 'active',
-        },
-      ],
-      { session },
-    );
+      await Membership.create(
+        [
+          {
+            communityId: community[0]._id,
+            userId,
+            role: 'owner',
+            status: 'active',
+            joinedAt: new Date(),
+          },
+        ],
+        { session },
+      );
 
-    await Membership.create(
-      [
-        {
-          communityId: community[0]._id,
-          userId,
-          role: 'owner',
-          status: 'active',
-          joinedAt: new Date(),
-        },
-      ],
-      { session },
-    );
-
-    await session.commitTransaction();
-    return community[0];
-  } catch (err) {
-    await session.abortTransaction();
-    if (err.code === 11000) {
-      throw new AppError(ERROR_CODES.CONFLICT, 'A community with this name already exists', 409);
+      return community[0];
+    } catch (err) {
+      if (err.code === 11000) {
+        throw new AppError(ERROR_CODES.CONFLICT, 'A community with this name already exists', 409);
+      }
+      throw err;
     }
-    throw err;
-  } finally {
-    await session.endSession();
-  }
+  });
 }
 
 /**

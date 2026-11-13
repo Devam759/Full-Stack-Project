@@ -20,6 +20,7 @@ export function createRateLimiter({
   const memoryStore = new Map();
 
   return async function rateLimiter(req, res, next) {
+    const limit = typeof maxRequests === 'function' ? maxRequests(req) : maxRequests;
     const identifier = keyGenerator(req);
     const key = `${keyPrefix}:${identifier}`;
 
@@ -38,11 +39,11 @@ export function createRateLimiter({
           ttl = windowSeconds;
         }
 
-        res.setHeader('RateLimit-Limit', maxRequests);
-        res.setHeader('RateLimit-Remaining', Math.max(0, maxRequests - count));
+        res.setHeader('RateLimit-Limit', limit);
+        res.setHeader('RateLimit-Remaining', Math.max(0, limit - count));
         res.setHeader('RateLimit-Reset', ttl);
 
-        if (count > maxRequests) {
+        if (count > limit) {
           res.setHeader('Retry-After', ttl);
           return res
             .status(429)
@@ -73,11 +74,11 @@ export function createRateLimiter({
     memoryStore.set(key, entry);
 
     const ttlSeconds = Math.max(1, Math.ceil((entry.resetAt - now) / 1000));
-    res.setHeader('RateLimit-Limit', maxRequests);
-    res.setHeader('RateLimit-Remaining', Math.max(0, maxRequests - entry.count));
+    res.setHeader('RateLimit-Limit', limit);
+    res.setHeader('RateLimit-Remaining', Math.max(0, limit - entry.count));
     res.setHeader('RateLimit-Reset', ttlSeconds);
 
-    if (entry.count > maxRequests) {
+    if (entry.count > limit) {
       res.setHeader('Retry-After', ttlSeconds);
       return res
         .status(429)

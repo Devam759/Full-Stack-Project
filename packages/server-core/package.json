@@ -1,0 +1,25 @@
+{
+  "name": "@borrowloop/server-core",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "./src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./db": "./src/db.js",
+    "./dates": "./src/common/dates.js",
+    "./models/*": "./src/models/*",
+    "./services/*": "./src/services/*",
+    "./*": "./src/*"
+  },
+  "dependencies": {
+    "@borrowloop/shared": "*",
+    "argon2": "^0.45.2",
+    "dotenv": "^16.4.7",
+    "ioredis": "^5.4.2",
+    "mongoose": "^8.9.5",
+    "nodemailer": "^10.3.1",
+    "pino": "^9.6.0",
+    "uuid": "^11.0.5",
+    "zod": "^3.24.2"
+  }
+}

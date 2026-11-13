@@ -14,6 +14,16 @@
 - Check role and ownership on every endpoint, not only in the interface.
 - Users see only their own bookings, chats, wallet and disputes. Care agents see only the cases they open. Every care or admin read of a case is logged.
 
+## Real-time & WebSocket Authorisation Rules
+
+- **Handshake Authentication**: Every WebSocket connection must supply a valid JWT access token. Expired tokens, signature mismatches, or wrong audience are rejected with connection errors.
+- **Status Guards**: Banned, frozen, and deleted users are strictly rejected at the handshake layer.
+- **Room Authorization & Chat Access**: Clients can only join `conversation:<id>` or access `/v1/bookings/:id/messages` if they are verified participants (`borrowerId` or `lenderId`) in the underlying booking. Care agents see only the dispute cases they open/are assigned to (deferred to Phase 8). An admin or care agent who is personally a participant in a booking uses the standard participant routes for their own bookings; non-participant staff access without an active assigned dispute is strictly forbidden.
+- **Block Protection**: If either party in a conversation has blocked the other, room joins are refused with `BLOCKED`.
+- **Mid-Session Cutoff**: When a user's account is banned, frozen, or deleted, all active WebSocket connections across all nodes are immediately severed using `disconnectUser`.
+- **Resource Protection**: Maximum 5 concurrent WebSocket connections per user; 10 KB maximum event payload limit; per-event Zod validation with structured error acks; Redis rate limiting on message send and pin confirmation.
+- **Privacy Enforcement**: Messages, in-app notifications, and emails must NEVER reveal user wallet balances or exact home addresses. Emails must NEVER reveal meetup pin coordinates.
+
 ## Input and API safety
 
 - Zod validation for all input. Reject unknown fields.
