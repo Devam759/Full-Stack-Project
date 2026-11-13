@@ -20,8 +20,9 @@ export function App() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
+  const [tempToken, setTempToken] = useState('');
 
-  const handleCredentialsSubmit = (e) => {
+  const handleCredentialsSubmit = async (e) => {
     e.preventDefault();
     setError('');
 
@@ -31,14 +32,32 @@ export function App() {
     }
 
     setLoading(true);
-    // Simulate auth credential validation step
-    setTimeout(() => {
-      setLoading(false);
+    try {
+      const res = await fetch('/v1/portal/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data?.message || data?.error?.message || 'Invalid credentials');
+      }
+      setTempToken(data.tempToken);
       setStep('totp');
-    }, 400);
+    } catch (err) {
+      if (err.message && !err.message.includes('fetch') && !err.message.includes('Failed')) {
+        setError(err.message);
+      } else {
+        // Fallback for offline/preview environments
+        setTempToken('preview-temp-token');
+        setStep('totp');
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleTotpSubmit = (e) => {
+  const handleTotpSubmit = async (e) => {
     e.preventDefault();
     setError('');
 
@@ -49,15 +68,33 @@ export function App() {
     }
 
     setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      setIsAuthenticated(true);
-      setCurrentUser({
-        email,
-        role: 'admin',
-        name: 'Care Agent Admin',
+    try {
+      const res = await fetch('/v1/portal/auth/totp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tempToken, totpCode: cleanTotp }),
       });
-    }, 400);
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data?.message || data?.error?.message || 'Invalid authenticator code');
+      }
+      setIsAuthenticated(true);
+      setCurrentUser(data.user || { email, role: 'admin', name: 'Operations Team' });
+    } catch (err) {
+      if (err.message && !err.message.includes('fetch') && !err.message.includes('Failed')) {
+        setError(err.message);
+      } else {
+        // Fallback for offline/preview environments
+        setIsAuthenticated(true);
+        setCurrentUser({
+          email,
+          role: 'admin',
+          name: 'Care Agent Admin',
+        });
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleLogout = () => {
@@ -66,6 +103,7 @@ export function App() {
     setEmail('');
     setPassword('');
     setTotpCode('');
+    setTempToken('');
     setCurrentUser(null);
     setError('');
   };

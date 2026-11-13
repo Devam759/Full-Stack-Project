@@ -55,6 +55,10 @@
     "vite": "^8.3.6",
     "vitest": "^3.0.5"
   },
+  "overrides": {
+    "tinypool": "^2.2.0",
+    "zod": "^4.6.7"
+  },
   "dependencies": {
     "argon2": "^0.45.2",
     "cookie-parser": "^1.4.7",
