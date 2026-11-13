@@ -33,7 +33,7 @@ import {
   isIdempotencyDuplicateError,
   handleIdempotencyConflict,
 } from '../../common/idempotencyMiddleware.js';
-import { emitDomainEvent } from '../../services/eventStub.js';
+import { emitDomainEvent } from '@borrowloop/server-core';
 
 /**
  * Calculates dueAt (23:59:59.999 IST on endDate, which is 18:29:59.999 UTC).

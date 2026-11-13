@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import { setupTestDB, teardownTestDB, clearTestDB } from './setup/dbTestHelper.js';
 import User from '../src/models/User.js';
 import ledgerService from '../src/modules/wallet/ledgerService.js';
-import reconciliationService from '../src/services/reconciliationService.js';
+import { reconciliationService } from '@borrowloop/server-core';
 
 describe('Regression: Reconciliation Cutoff Under Live Traffic', () => {
   beforeAll(async () => {

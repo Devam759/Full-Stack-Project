@@ -8,7 +8,7 @@ import Wallet from '../src/models/Wallet.js';
 import ItemDayLock from '../src/models/ItemDayLock.js';
 import LedgerEntry from '../src/models/LedgerEntry.js';
 import LedgerOperation from '../src/models/LedgerOperation.js';
-import { getRecordedEvents, clearRecordedEvents } from '../src/services/eventStub.js';
+import { getRecordedEvents, clearRecordedEvents } from '@borrowloop/server-core';
 
 describe('Suite 9: Booking Cancellation, Refund & Late-Cancel Penalty', () => {
   beforeAll(async () => {

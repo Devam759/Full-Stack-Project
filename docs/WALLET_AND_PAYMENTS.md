@@ -95,7 +95,7 @@ All monetary state-modifying requests (`/v1/wallet/add`, `/v1/wallet/withdraw`) 
 
 ## 8. Reconciliation Engine
 
-Nightly and on-demand reconciliation audits (`apps/api/src/services/reconciliationService.js`) ensure data integrity:
+Nightly and on-demand reconciliation audits (`packages/server-core/src/services/reconciliationService.js`) ensure data integrity:
 
 - **Consistent Snapshot Isolation**: Wallets and ledger aggregates for each batch are queried inside MongoDB transactions with `readConcern: { level: 'snapshot' }`. Initial global ledger sum, system account balances (`demo_funding`, `platform_revenue`), and orphan ledger detection also run within a snapshot transaction. This ensures point-in-time read consistency under live concurrent traffic with zero false positive mismatches.
 - **Orphan User Ledger Detection**: Scans ledger entries for any records whose `userId` does not exist in `users` or `wallets` using aggregation `$lookup`, flagging discrepancies in `reconciliation_runs`.

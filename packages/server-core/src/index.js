@@ -36,5 +36,6 @@ export * from './jobs/jobFramework.js';
 // Services
 export * from './services/ledgerService.js';
 export * from './services/reconciliationService.js';
+export { default as reconciliationService } from './services/reconciliationService.js';
 export * from './services/eventStub.js';
 export * from './services/bookingTransitions.js';

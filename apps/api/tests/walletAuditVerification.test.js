@@ -8,7 +8,7 @@ import Wallet from '../src/models/Wallet.js';
 import ReconciliationRun from '../src/models/ReconciliationRun.js';
 import LedgerOperation from '../src/models/LedgerOperation.js';
 import ledgerService from '../src/modules/wallet/ledgerService.js';
-import reconciliationService from '../src/services/reconciliationService.js';
+import { reconciliationService } from '@borrowloop/server-core';
 import { signAccessToken } from '../src/common/jwt.js';
 
 describe('Suite: Permanent Wallet Audit Verification & Settle-Once Proofs', () => {

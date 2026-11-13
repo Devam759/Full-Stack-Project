@@ -6,7 +6,7 @@ import Wallet from '../src/models/Wallet.js';
 import LedgerEntry from '../src/models/LedgerEntry.js';
 import ReconciliationRun from '../src/models/ReconciliationRun.js';
 import ledgerService from '../src/modules/wallet/ledgerService.js';
-import reconciliationService from '../src/services/reconciliationService.js';
+import { reconciliationService } from '@borrowloop/server-core';
 
 describe('Suite 10: Batched Reconciliation Audit & Mismatch Detection', () => {
   let user1;

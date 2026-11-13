@@ -5,7 +5,7 @@ import User from '../src/models/User.js';
 import Wallet from '../src/models/Wallet.js';
 import LedgerEntry from '../src/models/LedgerEntry.js';
 import ReconciliationRun from '../src/models/ReconciliationRun.js';
-import reconciliationService from '../src/services/reconciliationService.js';
+import { reconciliationService } from '@borrowloop/server-core';
 
 describe('Suite 11: Reconciliation Scale Benchmark (10,000 Seeded Users)', () => {
   beforeAll(async () => {
