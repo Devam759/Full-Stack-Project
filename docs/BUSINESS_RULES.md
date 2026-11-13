@@ -30,43 +30,47 @@ All numbers below are defaults. They live in `packages/shared/src/config.js` and
 ## Late return
 
 - Late charge per day is set by the lender. It is optional.
-- Charge accrues per started day after the due time.
+- Charge accrues per started day after the due time: `lateDays = max(0, ceil((effectiveTime - dueAt) / 24h))`, `charge = min(lateDays * lateFeePerDayPaise, depositPaise)`.
 - Charges are taken from the frozen deposit and never exceed it.
-- After 3 full days overdue, a "not returned" dispute opens automatically.
-- "Not returned" outcome: the full deposit goes to the lender and the borrower account is frozen.
+- After 3 full days overdue (`now >= dueAt + 3 days`), a "not returned" dispute opens automatically (`disputeReason: 'not_returned'`).
+- The borrower account is frozen (`status: 'frozen'`). Deposit stays frozen until Phase 8 care resolution.
 
 ## Return confirmation
 
 - The lender has 24 hours after the return scan to choose "All good" or "Report a problem".
-- No choice means "All good".
+- "All good": settles rent minus 15% commission to lender available, releases deposit to borrower available, releases unused day locks, marks `completedAt` and `completedBy: 'lender'`.
+- "Report a problem": note required, transitions to `disputed` with `disputeReason: 'damage'`, no money moves, funds stay frozen.
+- No choice within 24 hours triggers `autoCompleteReturnJob` to settle automatically with `completedBy: 'system'`. Lender receives a reminder 4 hours before deadline.
 
 ## Trust score (0 to 100, shown on profiles)
 
-Start at 50. Recalculate after each event.
+Start at 50. Derived cache field recalculated from append-only `trust_events` and revealed ratings:
 
-- Ratings: average rating gives up to plus or minus 20 points. The effect grows with the number of ratings (full effect at 10 ratings).
-- On-time completed borrow or lend: plus 2 each, up to plus 20 in total.
-- Lost dispute: minus 10.
-- No-show at pickup: minus 5.
-- Late cancel: minus 3.
-- Repeated damage claims by a lender that care agents reject: minus 5 each.
-- Score is clamped between 0 and 100.
-- Only completed bookings with distinct users count towards the score.
+- `ratingPart = round(20 * ((avg - 3) / 2) * min(count, 10) / 10)`
+- `onTimePart = min(2 * onTimeCount, 20)` (each distinct counterparty counted once per role: lend or borrow)
+- `score = clamp(50 + ratingPart + onTimePart + sum(penalties), 0, 100)`
+- Penalties:
+  - Lost dispute: -10
+  - Late cancel (within 6h of start date): -3
+  - Rejected damage claim by care agent: -5
+  - No-show at pickup: -5 (recorded in Phase 8)
+- Score is clamped between 0 and 100. Always written by recompute, never `$inc`.
 
 ## Ratings
 
-- 1 to 5 stars and an optional short comment.
-- Hidden until both sides submit, or 7 days pass.
+- 1 to 5 stars and an optional short comment (max 500 characters).
+- Hidden until both sides submit, or 7 days pass from booking completion.
+- When revealed, triggers rating average update and trust score recomputation.
 
 ## Strikes
 
 A "lost dispute" means a care agent ruled against the user's conduct.
 
-1. First: warning.
-2. Second: 7-day ban from booking and listing.
-3. Third: permanent ban.
+1. First: warning notification.
+2. Second: 7-day suspension (`banUntil = now + 7 days`, status remains `active`). The suspended user cannot book, accept requests, list, or relist items, but can log in, withdraw available funds, and return items currently held.
+3. Third: permanent ban (`status: 'banned'`).
 
-- Not returned item: full deposit to the lender and the account is frozen at once.
+- Not returned item: dispute opens and borrower account is frozen at once (`status: 'frozen'`).
 - The admin may reverse a strike on appeal.
 
 ## Communities

@@ -114,7 +114,7 @@ export const BOOKING_TRANSITIONS = Object.freeze([
     guards: Object.freeze(['past_pickup_deadline_end_of_start_day', 'pickup_not_occurred']),
     ledgerOp: 'booking_cancel_refund',
     opRef: 'default',
-    sideEffects: Object.freeze(['release_day_locks', 'refund_frozen_funds', 'emit_no_show_stub']),
+    sideEffects: Object.freeze(['release_day_locks', 'refund_frozen_funds']),
   },
   // 8. Extension requested by borrower
   {
@@ -169,12 +169,12 @@ export const BOOKING_TRANSITIONS = Object.freeze([
     opRef: null,
     sideEffects: Object.freeze(['refund_extension_hold', 'emit_extension_expired_event']),
   },
-  // 12. Pickup handover (lender scans borrower QR code)
+  // 12. Pickup handover (lender shows QR, borrower scans)
   {
     from: 'accepted',
     event: 'PICKUP_HANDOVER',
     to: 'picked_up',
-    actors: Object.freeze(['lender']),
+    actors: Object.freeze(['borrower']),
     guards: Object.freeze(['booking_is_accepted', 'valid_handover_code']),
     ledgerOp: null,
     opRef: null,
@@ -269,6 +269,32 @@ export const BOOKING_TRANSITIONS = Object.freeze([
       'release_deposit',
       'transfer_rent_to_lender_less_commission',
       'emit_completed_event',
+    ]),
+  },
+  // 17. Report problem on return (lender reports problem, note required, no money moves)
+  {
+    from: 'returned',
+    event: 'REPORT_PROBLEM',
+    to: 'disputed',
+    actors: Object.freeze(['lender']),
+    guards: Object.freeze(['booking_is_returned', 'note_required']),
+    ledgerOp: null,
+    opRef: null,
+    sideEffects: Object.freeze(['set_dispute_reason_damage', 'emit_dispute_requested_event']),
+  },
+  // 18. Open not-returned dispute (item picked up, now >= dueAt + OVERDUE_DISPUTE_SECONDS)
+  {
+    from: 'picked_up',
+    event: 'OPEN_NOT_RETURNED_DISPUTE',
+    to: 'disputed',
+    actors: Object.freeze(['system']),
+    guards: Object.freeze(['now_gte_due_at_plus_overdue_dispute_seconds']),
+    ledgerOp: null,
+    opRef: null,
+    sideEffects: Object.freeze([
+      'set_dispute_reason_not_returned',
+      'freeze_borrower_account',
+      'emit_dispute_requested_event',
     ]),
   },
 ]);

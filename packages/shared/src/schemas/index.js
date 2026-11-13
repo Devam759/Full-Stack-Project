@@ -7,3 +7,5 @@ export * from './wallet.js';
 export * from './booking.js';
 export * from './chat.js';
 export * from './notification.js';
+export * from './handoverSchemas.js';
+export * from './ratingSchemas.js';

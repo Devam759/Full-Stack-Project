@@ -67,6 +67,21 @@ export const BUSINESS_CONFIG = Object.freeze({
   QR_EXPIRY_SECONDS: 30,
   QR_FALLBACK_CODE_LENGTH: 6,
   QR_FALLBACK_MAX_ATTEMPTS: 3,
+  RETURN_CONFIRM_REMINDER_HOURS_BEFORE: 4,
+
+  // Handover (Phase 7)
+  HANDOVER: Object.freeze({
+    MAX_DISTANCE_METERS: 200,
+    MAX_ACCURACY_SLACK_METERS: 100,
+    QR_REFRESH_SECONDS: 25,
+    FALLBACK_LOCKOUT_MINUTES: 15,
+    PHOTO_WINDOW_MINUTES: 30,
+    RATE_LIMITS: Object.freeze({
+      ISSUE_QR: Object.freeze({ windowSeconds: 60, maxRequests: 20 }),
+      SCAN: Object.freeze({ windowSeconds: 60, maxRequests: 20 }),
+      CODE: Object.freeze({ windowSeconds: 60, maxRequests: 10 }),
+    }),
+  }),
 
   // Auth, Tokens & Sessions
   ACCESS_TOKEN_EXPIRY_MINUTES: 15,
@@ -95,6 +110,13 @@ export const BUSINESS_CONFIG = Object.freeze({
   MAX_RATING_STARS: 5,
   RATING_REVEAL_DAYS: 7,
   RATING_REVEAL_SECONDS: 7 * 24 * 60 * 60,
+  RATINGS: Object.freeze({
+    MIN_RATING_STARS: 1,
+    MAX_RATING_STARS: 5,
+    RATING_REVEAL_DAYS: 7,
+    RATING_REVEAL_SECONDS: 7 * 24 * 60 * 60,
+    COMMENT_MAX_LENGTH: 500,
+  }),
 
   // Trust Score (0 to 100, starts at 50)
   INITIAL_TRUST_SCORE: 50,
@@ -327,6 +349,18 @@ export const BUSINESS_CONFIG = Object.freeze({
       'pin_proposed',
       'pin_confirmed',
       'reconciliation_mismatch',
+      'handover_scanned',
+      'picked_up',
+      'returned',
+      'return_confirm_reminder',
+      'booking_completed',
+      'problem_reported',
+      'late_charge_accruing',
+      'not_returned_dispute_opened',
+      'rating_reminder',
+      'ratings_revealed',
+      'strike_warning',
+      'suspension_started',
     ]),
   }),
 

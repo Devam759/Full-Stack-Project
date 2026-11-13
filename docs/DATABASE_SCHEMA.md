@@ -29,12 +29,23 @@ Indexes: `(itemId, day)` unique.
 
 ## bookings
 
-`itemId, lenderId, borrowerId, startDate, endDate, dueAt, days, rentPaise, depositPaise, lateFeePerDayPaise, commissionBps, status, statusHistory[], pickupAt?, returnAt?, lateChargePaise, extensions[] { id, requestedEndDate, extraDays, extraRentPaise, status, requestedAt, respondedAt?, expiresAt?, rejectionReason? }, cancelledBy?, cancelReason?, handoverCodeHash?, expiresAt`
+`itemId, lenderId, borrowerId, startDate, endDate, dueAt, days, rentPaise, depositPaise, lateFeePerDayPaise, commissionBps, status, statusHistory[], pickupAt?, returnAt?, lateChargePaise, extensions[] { id, requestedEndDate, extraDays, extraRentPaise, status, requestedAt, respondedAt?, expiresAt?, rejectionReason? }, cancelledBy?, cancelReason?, completedAt?, completedBy? (lender|system), returnConfirmDeadline?, disputeReason? (damage|not_returned), disputeOpenedAt?, expiresAt`
 Indexes: `(borrowerId, status)`, `(lenderId, status)`, `(itemId, startDate, endDate)`, `(status, expiresAt)`, `(status, dueAt)`.
 
 ## handovers
 
-`bookingId, type (pickup|return), qrNonce, qrExpiresAt, scannedBy, scannedAt, geo (distance between phones only), photos[] { by, url, capturedAt }, fallbackCodeUsed`
+`bookingId, type (pickup|return), issuerId, scannerId?, qrNonceHash, qrExpiresAt, qrConsumedAt?, codeHmac, codeExpiresAt, codeAttempts, lockedUntil?, scannedAt?, distanceMeters?, geoChecked, fallbackCodeUsed, photos[] { by, publicId, url, capturedAt }`
+Indexes: `(bookingId, type)` unique, `qrNonceHash` unique sparse, `(bookingId, createdAt)`. Note: no latitude or longitude is stored.
+
+## ratings
+
+`bookingId, raterId, rateeId, targetRole (lender|borrower), itemId?, stars (1-5), comment?, isRevealed (bool), revealedAt?`
+Indexes: `(bookingId, raterId)` unique, `(rateeId, isRevealed, createdAt)`.
+
+## trust_events (append-only)
+
+`userId, type (on_time_completed|rating|late_cancel|lost_dispute|no_show|rejected_damage_claim|strike|strike_reversed), delta?, bookingId?, counterpartyId?, role?, eventKey (unique), meta, createdAt`
+Indexes: `(userId, createdAt)`, `eventKey` unique.
 
 ## wallets
 

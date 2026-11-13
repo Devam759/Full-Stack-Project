@@ -52,10 +52,15 @@
 - Meeting pins are visible only to the two people in the booking.
 - Suggest public meeting places. Provide block and report features and a safety tips page.
 
-## Handover QR
+## Handover QR & Verification Security
 
-- QR token is bound to one booking, expires in 30 seconds and is single use.
-- Check that both phones are near each other. Provide the 6-digit fallback code with limited attempts.
+- **Rotating QR Token**: Cryptographically HMAC-signed payload `{ bookingId, type, nonce, exp }` with 30-second TTL. The server stores only `sha256(nonce)`.
+- **Single-Use Invariant**: Consumed via an atomic database operation: `findOneAndUpdate({ bookingId, type, qrNonceHash, qrConsumedAt: null, qrExpiresAt: { $gt: now } }, { $set: { qrConsumedAt: now } })`. Two simultaneous scans guarantee exactly one winner; replayed or expired tokens are rejected (`QR_ALREADY_USED`, `QR_EXPIRED`).
+- **Proximity Verification**: Issuer and scanner submit coordinates during the request and scan. Distance is calculated via the Haversine formula minus an accuracy slack allowance (max 100m). The distance must be within 200m (`MAX_DISTANCE_METERS`). Neither user's exact coordinates are persisted in the database; only the calculated `distanceMeters` is retained. If GPS is unavailable or permission is denied, the flow requires the fallback code and sets `geoChecked: false`.
+- **Fallback 6-Digit Code**: Rotates with each QR refresh, returned once, and stored as `HMAC(serverSecret, code + bookingId)` (never plain text or simple unsalted SHA-256). Exceeding 3 incorrect attempts locks the handover for 15 minutes (`FALLBACK_LOCKOUT_MINUTES`). The failure counter is updated atomically outside the main transaction so it persists even if the request aborts.
+- **Condition Photos**: Uploads are pre-signed specifically into the booking's folder (`borrowloop/handovers/<bookingId>/<stage>/`). Max 6 photos per party per stage, registrable only within 30 minutes (`PHOTO_WINDOW_MINUTES`) of scan confirmation. Server records `capturedAt` at registration.
+  > [!NOTE]
+  > Browser web environments cannot cryptographically prove that a camera feed or photo was captured live. Condition photos provide timestamped evidence for care agent dispute review rather than hardware attestation.
 
 ## Personal data
 

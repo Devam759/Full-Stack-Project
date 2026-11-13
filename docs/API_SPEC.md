@@ -16,11 +16,11 @@ Base URL: `https://api.<domain>/v1`. JSON only. Authentication uses `Authorizati
 
 ### Error codes:
 
-- **400 Bad Request**: `VALIDATION_ERROR`, `BAD_REQUEST`, `INVALID_IDEMPOTENCY_KEY`
+- **400 Bad Request**: `VALIDATION_ERROR`, `BAD_REQUEST`, `INVALID_IDEMPOTENCY_KEY`, `QR_INVALID`, `QR_EXPIRED`, `HANDOVER_TOO_FAR`, `HANDOVER_CODE_INVALID`, `HANDOVER_PHOTO_WINDOW_CLOSED`, `HANDOVER_PHOTO_LIMIT`
 - **401 Unauthorized**: `UNAUTHORIZED`, `INVALID_CREDENTIALS`, `TOKEN_EXPIRED`, `TOKEN_REVOKED`, `TOTP_REQUIRED`, `INVALID_TOTP`
-- **403 Forbidden**: `FORBIDDEN`, `EMAIL_NOT_VERIFIED`, `ACCOUNT_BANNED`, `ACCOUNT_FROZEN`, `UNDERAGE`
+- **403 Forbidden**: `FORBIDDEN`, `EMAIL_NOT_VERIFIED`, `ACCOUNT_BANNED`, `ACCOUNT_FROZEN`, `ACCOUNT_SUSPENDED`, `HANDOVER_LOCKED`, `RATING_NOT_ALLOWED`, `UNDERAGE`
 - **404 Not Found**: `NOT_FOUND`, `USER_NOT_FOUND`, `ITEM_NOT_FOUND`, `COMMUNITY_NOT_FOUND`, `BOOKING_NOT_FOUND`
-- **409 Conflict**: `CONFLICT`, `BOOKING_DATES_TAKEN`, `INVALID_BOOKING_TRANSITION`, `INSUFFICIENT_FUNDS`, `WALLET_CAP_EXCEEDED`, `IDEMPOTENCY_KEY_REUSE`, `IDEMPOTENCY_IN_PROGRESS`, `OPERATION_ALREADY_APPLIED`
+- **409 Conflict**: `CONFLICT`, `BOOKING_DATES_TAKEN`, `INVALID_BOOKING_TRANSITION`, `INSUFFICIENT_FUNDS`, `WALLET_CAP_EXCEEDED`, `IDEMPOTENCY_KEY_REUSE`, `IDEMPOTENCY_IN_PROGRESS`, `OPERATION_ALREADY_APPLIED`, `QR_ALREADY_USED`, `RATING_ALREADY_SUBMITTED`
 - **429 Rate Limited**: `RATE_LIMITED`
 - **500 Server Error**: `INTERNAL_ERROR`, `LEDGER_INVARIANT_VIOLATION`
 
@@ -139,12 +139,59 @@ All booking lifecycle endpoints require authentication (`Authorization: Bearer <
 
 ## Handover and return
 
-- `POST /bookings/:id/handover/qr` lender requests a rotating QR for pickup
-- `POST /bookings/:id/handover/scan` borrower submits scanned token and current position
-- `POST /bookings/:id/handover/code` fallback 6-digit code
-- `POST /bookings/:id/return/qr`, `POST /bookings/:id/return/scan`
-- `POST /bookings/:id/photos` registers condition photos
-- `POST /bookings/:id/return/confirm` lender: `{ outcome: "ok" | "problem", note }`
+All mutating handover and return endpoints require authenticated user, verified email, and participant authorization. Endpoints modifying booking state require an `Idempotency-Key` header (8-128 chars matching `/^[A-Za-z0-9_-]+$/`).
+
+- `POST /v1/bookings/:id/handover/qr`
+  - Lender only (status `accepted`). Rate limited (`rl:handover:issue_qr`).
+  - Response: `{ qrToken, expiresAt, fallbackCode, expiresInSeconds: 25 }`.
+- `POST /v1/bookings/:id/handover/scan`
+  - Borrower only (status `accepted`). Header: `Idempotency-Key`.
+  - Body: `{ qrToken, lat?, lng?, accuracyM? }`.
+  - Atomically validates single-use QR nonce, verifies proximity (within 200m allowance), transitions booking to `picked_up`, stamps `pickupAt`, and records handover.
+  - Response: `{ booking, handover }`.
+- `POST /v1/bookings/:id/handover/code`
+  - Borrower only (status `accepted`). Header: `Idempotency-Key`.
+  - Body: `{ code: "123456" }`. Max 3 attempts before 15-minute lockout.
+  - Response: `{ booking, fallbackCodeUsed: true }`.
+- `POST /v1/bookings/:id/return/qr`
+  - Borrower only (status `picked_up`). Rate limited.
+  - Response: `{ qrToken, expiresAt, fallbackCode, expiresInSeconds: 25 }`.
+- `POST /v1/bookings/:id/return/scan`
+  - Lender only (status `picked_up`). Header: `Idempotency-Key`.
+  - Body: `{ qrToken, lat?, lng?, accuracyM? }`.
+  - Atomically validates token, records `returnAt`, sets `returnConfirmDeadline = returnAt + 24h`, computes final `lateChargePaise`, and transitions to `returned`.
+  - Response: `{ booking, handover }`.
+- `POST /v1/bookings/:id/return/code`
+  - Lender only (status `picked_up`). Header: `Idempotency-Key`.
+  - Body: `{ code: "123456" }`. Max 3 attempts before lockout.
+  - Response: `{ booking, fallbackCodeUsed: true }`.
+- `POST /v1/bookings/:id/photos`
+  - Participants only (status `accepted`, `picked_up`, or `returned`).
+  - Body: `{ stage: 'pickup' | 'return', photos: [{ publicId, url }] }` (max 6 photos per party, within 30 min of scan).
+  - Response: `{ photos: [...] }`.
+- `GET /v1/bookings/:id/handovers`
+  - Participants only. Returns recorded handover details and photos.
+  - Response: `{ handovers: [...] }`.
+- `POST /v1/bookings/:id/return/confirm`
+  - Lender only (status `returned`). Header: `Idempotency-Key`.
+  - Body: `{ outcome: 'ok' | 'problem', note?: string }` (note required for problem).
+  - If `ok`: executes double-entry settlement (`settleBookingCompletion`), releases unused day locks, marks `completedAt` and `completedBy: 'lender'`, writes trust events, emits `booking.completed`.
+  - If `problem`: sets `disputeReason: 'damage'`, transitions to `disputed`, no money moves, emits `dispute.requested`.
+  - Response: `{ booking, outcome, settlement? }`.
+
+## Ratings
+
+- `POST /v1/bookings/:id/rating`
+  - Participants only (status `completed`). Header: `Idempotency-Key`.
+  - Body: `{ stars: 1-5, comment?: string }`.
+  - Blind submission: ratings remain hidden until both parties submit or 7 days elapse from completion. When revealed, updates user & item rating averages and triggers trust score recalculation.
+  - Response: `{ ratingSubmitted: true, isRevealed: boolean }`.
+- `GET /v1/users/:id/ratings`
+  - Public keyset cursor pagination of revealed ratings for a user.
+  - Response: `{ items: [...], nextCursor }`.
+- `GET /v1/bookings/:id/ratings`
+  - Participants only. Returns revealed ratings (plus caller's own unrevealed rating).
+  - Response: `{ ratings: [...] }`.
 
 ## Chat
 

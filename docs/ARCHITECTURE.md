@@ -83,19 +83,19 @@ Each module has routes, controller, service, repository and tests. Controllers h
 
 ### Final Background Jobs Table
 
-| Job                                  | Schedule Config Key in `BUSINESS_CONFIG.BACKGROUND_JOBS` | Frequency             | Idempotency / Dedupe Mechanism                       | Status   |
-| ------------------------------------ | -------------------------------------------------------- | --------------------- | ---------------------------------------------------- | -------- |
-| Expire unanswered requests           | `EXPIRE_REQUESTS_MINUTES`                                | Every 5 minutes       | `status: 'requested'` conditional transition         | Active   |
-| Expire bookings without pickup       | `EXPIRE_PICKUPS_MINUTES`                                 | Every 15 minutes      | Settle-once `LedgerOperation`, state machine guard   | Active   |
-| Expire unanswered extensions         | `EXPIRE_EXTENSIONS_MINUTES`                              | Every 15 minutes      | Settle-once `LedgerOperation`, extension state guard | Active   |
-| Send pickup reminders                | `PICKUP_REMINDERS_MINUTES`                               | Every 15 minutes      | `dedupeKey: notif:pickup_rem:${id}:${uid}:${date}`   | Active   |
-| Send due reminders                   | `DUE_REMINDERS_MINUTES`                                  | Every 15 minutes      | `dedupeKey: notif:due_rem:${id}:${uid}:${date}`      | Active   |
-| Accrue late charges & open disputes  | `ACCRUE_LATE_CHARGES_MINUTES`                            | Hourly                | Guarded by feature flag (Phase 7 feature)            | Deferred |
-| Auto-complete returns after 24 hours | `AUTO_COMPLETE_RETURNS_MINUTES`                          | Every 15 minutes      | Guarded by feature flag (Phase 7 feature)            | Deferred |
-| Reveal ratings after 7 days          | `REVEAL_RATINGS_HOURS`                                   | Daily                 | Guarded by feature flag (Phase 7 feature)            | Deferred |
-| Ledger reconciliation                | `LEDGER_RECONCILIATION_CRON`                             | Nightly (`0 2 * * *`) | Redis distributed lock, snapshot-read transaction    | Active   |
-| Outbox dispatcher                    | `OUTBOX_DISPATCHER_SECONDS`                              | Every 10 seconds      | Atomic `findOneAndUpdate` claim, 5 min lease         | Active   |
-| Email sending                        | Worker BullMQ queue `email_queue`                        | On demand             | BullMQ custom `jobId: email_${dedupeKey}`            | Active   |
+| Job                                  | Schedule Config Key in `BUSINESS_CONFIG.BACKGROUND_JOBS` | Frequency             | Idempotency / Dedupe Mechanism                       | Status |
+| ------------------------------------ | -------------------------------------------------------- | --------------------- | ---------------------------------------------------- | ------ |
+| Expire unanswered requests           | `EXPIRE_REQUESTS_MINUTES`                                | Every 5 minutes       | `status: 'requested'` conditional transition         | Active |
+| Expire bookings without pickup       | `EXPIRE_PICKUPS_MINUTES`                                 | Every 15 minutes      | Settle-once `LedgerOperation`, state machine guard   | Active |
+| Expire unanswered extensions         | `EXPIRE_EXTENSIONS_MINUTES`                              | Every 15 minutes      | Settle-once `LedgerOperation`, extension state guard | Active |
+| Send pickup reminders                | `PICKUP_REMINDERS_MINUTES`                               | Every 15 minutes      | `dedupeKey: notif:pickup_rem:${id}:${uid}:${date}`   | Active |
+| Send due reminders                   | `DUE_REMINDERS_MINUTES`                                  | Every 15 minutes      | `dedupeKey: notif:due_rem:${id}:${uid}:${date}`      | Active |
+| Accrue late charges & open disputes  | `ACCRUE_LATE_CHARGES_MINUTES`                            | Hourly                | Absolute daily calculation, settle-once guard        | Active |
+| Auto-complete returns after 24 hours | `AUTO_COMPLETE_RETURNS_MINUTES`                          | Every 15 minutes      | Settle-once `LedgerOperation`, state machine guard   | Active |
+| Reveal ratings after 7 days          | `REVEAL_RATINGS_HOURS`                                   | Daily                 | Timestamp threshold guard, idempotent recomputation  | Active |
+| Ledger reconciliation                | `LEDGER_RECONCILIATION_CRON`                             | Nightly (`0 2 * * *`) | Redis distributed lock, snapshot-read transaction    | Active |
+| Outbox dispatcher                    | `OUTBOX_DISPATCHER_SECONDS`                              | Every 10 seconds      | Atomic `findOneAndUpdate` claim, 5 min lease         | Active |
+| Email sending                        | Worker BullMQ queue `email_queue`                        | On demand             | BullMQ custom `jobId: email_${dedupeKey}`            | Active |
 
 ## 9. Authentication across domains
 

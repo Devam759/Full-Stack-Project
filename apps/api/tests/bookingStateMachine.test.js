@@ -53,6 +53,31 @@ describe('Booking State Machine (Unit Tests)', () => {
     // 10. Extension rejected by lender
     const rejectExt = canTransition('accepted', 'REJECT_EXTENSION', 'lender');
     expect(rejectExt.allowed).toBe(true);
+
+    // 11. Pickup handover: borrower scans QR shown by lender
+    const pickupHandover = canTransition('accepted', 'PICKUP_HANDOVER', 'borrower');
+    expect(pickupHandover.allowed).toBe(true);
+    expect(pickupHandover.transition.to).toBe('picked_up');
+
+    // 12. Return handover: lender scans QR shown by borrower
+    const returnHandover = canTransition('picked_up', 'RETURN_HANDOVER', 'lender');
+    expect(returnHandover.allowed).toBe(true);
+    expect(returnHandover.transition.to).toBe('returned');
+
+    // 13. Confirm return: lender confirms return
+    const confirmReturn = canTransition('returned', 'CONFIRM_RETURN', 'lender');
+    expect(confirmReturn.allowed).toBe(true);
+    expect(confirmReturn.transition.to).toBe('completed');
+
+    // 14. Report problem: lender reports problem
+    const reportProb = canTransition('returned', 'REPORT_PROBLEM', 'lender');
+    expect(reportProb.allowed).toBe(true);
+    expect(reportProb.transition.to).toBe('disputed');
+
+    // 15. Open not-returned dispute: system triggers after 3 days overdue
+    const notReturnedDispute = canTransition('picked_up', 'OPEN_NOT_RETURNED_DISPUTE', 'system');
+    expect(notReturnedDispute.allowed).toBe(true);
+    expect(notReturnedDispute.transition.to).toBe('disputed');
   });
 
   it('rejects unauthorized roles for legal transitions', () => {
@@ -71,6 +96,19 @@ describe('Booking State Machine (Unit Tests)', () => {
 
     // lender cannot request extension
     expect(canTransition('accepted', 'REQUEST_EXTENSION', 'lender').allowed).toBe(false);
+
+    // lender cannot scan pickup QR (borrower must scan)
+    expect(canTransition('accepted', 'PICKUP_HANDOVER', 'lender').allowed).toBe(false);
+
+    // borrower cannot scan return QR (lender must scan)
+    expect(canTransition('picked_up', 'RETURN_HANDOVER', 'borrower').allowed).toBe(false);
+
+    // borrower cannot report problem on return (lender action)
+    expect(canTransition('returned', 'REPORT_PROBLEM', 'borrower').allowed).toBe(false);
+
+    // borrower or lender cannot open not-returned dispute directly (system action)
+    expect(canTransition('picked_up', 'OPEN_NOT_RETURNED_DISPUTE', 'borrower').allowed).toBe(false);
+    expect(canTransition('picked_up', 'OPEN_NOT_RETURNED_DISPUTE', 'lender').allowed).toBe(false);
   });
 
   it('allows admin role for any transition defined in the table', () => {
@@ -95,6 +133,12 @@ describe('Booking State Machine (Unit Tests)', () => {
     expect(canTransition('requested', 'UNKNOWN_EVENT', 'lender').allowed).toBe(false);
     expect(canTransition('non_existent_status', 'ACCEPT_REQUEST', 'lender').allowed).toBe(false);
     expect(canTransition('requested', 'ACCEPT_REQUEST', 'unknown_role').allowed).toBe(false);
+  });
+
+  it('verifies EXPIRE_PICKUP side-effects do not contain emit_no_show_stub', () => {
+    const expirePickup = canTransition('accepted', 'EXPIRE_PICKUP', 'system');
+    expect(expirePickup.allowed).toBe(true);
+    expect(expirePickup.transition.sideEffects).not.toContain('emit_no_show_stub');
   });
 
   it('verifies BOOKING_TRANSITIONS integrity', () => {

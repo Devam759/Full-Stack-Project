@@ -187,8 +187,26 @@ const bookingSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
-    handoverCodeHash: {
+    completedAt: {
+      type: Date,
+      default: null,
+    },
+    completedBy: {
       type: String,
+      enum: ['lender', 'system'],
+      default: null,
+    },
+    returnConfirmDeadline: {
+      type: Date,
+      default: null,
+    },
+    disputeReason: {
+      type: String,
+      enum: ['damage', 'not_returned'],
+      default: null,
+    },
+    disputeOpenedAt: {
+      type: Date,
       default: null,
     },
   },
