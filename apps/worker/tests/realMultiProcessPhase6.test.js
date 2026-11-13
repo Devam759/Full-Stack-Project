@@ -248,8 +248,13 @@ describe('Item 1: Real-Process Multi-Instance Tests (Worker & API)', () => {
         socketsApi1.push(sock);
       }
 
-      // Verify Redis tracks 5 active sockets
-      const countBeforeKill = await redis.zcard(`user_sockets:${user._id.toString()}`);
+      // Allow async socket connection handler to complete redis.zadd
+      let countBeforeKill = 0;
+      for (let attempt = 0; attempt < 20; attempt++) {
+        countBeforeKill = await redis.zcard(`user_sockets:${user._id.toString()}`);
+        if (countBeforeKill === 5) break;
+        await new Promise((r) => setTimeout(r, 100));
+      }
       expect(countBeforeKill).toBe(5);
 
       // Kill API 1 holding the 5 sockets
@@ -394,6 +399,9 @@ describe('Item 1: Real-Process Multi-Instance Tests (Worker & API)', () => {
           lenderId: userB._id,
           startDate: '2026-11-20',
           endDate: '2026-11-22',
+          days: 2,
+          expiresAt: new Date(Date.now() + 86400000),
+          dueAt: new Date(Date.now() + 86400000 * 2),
           totalDays: 2,
           rentPaise: 10000,
           depositPaise: 20000,

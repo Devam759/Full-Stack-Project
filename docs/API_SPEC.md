@@ -163,7 +163,7 @@ All booking lifecycle endpoints require authentication (`Authorization: Bearer <
   - Atomically marks target pin as `confirmed`, prior confirmed pins as `superseded`, and sets `conversation.confirmedPin`.
 - `POST /v1/bookings/:id/messages/read`:
   - Body: `{ messageIds?: string[] }`. Marks unread messages as read by current participant and broadcasts `message:read`.
-- Socket Events:
+- Socket Events: `message:new`, `pin:proposed`, `pin:confirmed`, `booking:updated`, `notification:new`, `message:read`.
   - Inbound: `conversation:join` (`{ conversationId }`), `message:send` (`{ conversationId, clientMessageId, type, text, pin }`, ack callback), `pin:confirm` (`{ conversationId, messageId }`, ack callback), `message:read` (`{ conversationId, messageIds }`).
   - Outbound: `message:new`, `pin:proposed`, `pin:confirmed`, `booking:updated` (emitted on all booking lifecycle transitions), `notification:new`, `message:read`.
 - Error Codes: `CANNOT_CONFIRM_OWN_PIN`, `PIN_OUT_OF_BOUNDS`, `BOOKING_TERMINAL_CHAT_CLOSED`, `MESSAGE_ALREADY_EXISTS`, `TOO_MANY_CONNECTIONS`, `RATE_LIMITED`.

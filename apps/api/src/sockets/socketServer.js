@@ -246,6 +246,20 @@ export function initSocketServer(httpServer) {
       }
     });
 
+    socket.on('booking:join', ({ bookingId }) => {
+      if (bookingId) {
+        socket.join(`booking:${bookingId}`);
+        logger.debug({ userId, bookingId }, 'User joined booking room');
+      }
+    });
+
+    socket.on('booking:leave', ({ bookingId }) => {
+      if (bookingId) {
+        socket.leave(`booking:${bookingId}`);
+        logger.debug({ userId, bookingId }, 'User left booking room');
+      }
+    });
+
     // Per-event validated message sending via WebSocket
     socket.on('message:send', async ({ bookingId, data }, callback) => {
       try {
