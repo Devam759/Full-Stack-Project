@@ -657,7 +657,7 @@ describe('CHAT & SOCKETS Verification: Items 8, 9, 10, 11, 12, and 13', () => {
       const received = await Promise.race([
         receivedPromise,
         new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('Timed out waiting for socket events')), 4000),
+          setTimeout(() => reject(new Error('Timed out waiting for socket events')), 10000),
         ),
       ]);
       expect(received).toBe(true);

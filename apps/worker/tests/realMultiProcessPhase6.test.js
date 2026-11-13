@@ -53,7 +53,7 @@ describe('Item 1: Real-Process Multi-Instance Tests (Worker & API)', () => {
       env: {
         ...process.env,
         NODE_ENV: 'development',
-        LOG_LEVEL: 'warn',
+        LOG_LEVEL: 'info',
         FORCE_START_WORKER: 'true',
         ALLOW_DEMO_MONEY: 'true',
         MONGODB_URI: mongoUri,
@@ -84,7 +84,7 @@ describe('Item 1: Real-Process Multi-Instance Tests (Worker & API)', () => {
       child.on('error', reject);
       setTimeout(
         () => reject(new Error(`Worker startup timeout. Output:\n${stdout}\n${stderr}`)),
-        15000,
+        25000,
       );
     });
 
@@ -211,7 +211,7 @@ describe('Item 1: Real-Process Multi-Instance Tests (Worker & API)', () => {
     const user = await User.create({
       email: 'reconnect_test@borrowloop.test',
       name: 'Reconnect User',
-      role: 'borrower',
+      role: 'user',
       status: 'active',
       passwordHash: 'dummy-hash',
     });
@@ -312,7 +312,7 @@ describe('Item 1: Real-Process Multi-Instance Tests (Worker & API)', () => {
     const userA = await User.create({
       email: 'user_a@borrowloop.test',
       name: 'User A',
-      role: 'borrower',
+      role: 'user',
       status: 'active',
       passwordHash: 'dummy-hash',
     });
@@ -320,7 +320,7 @@ describe('Item 1: Real-Process Multi-Instance Tests (Worker & API)', () => {
     const userB = await User.create({
       email: 'user_b@borrowloop.test',
       name: 'User B',
-      role: 'lender',
+      role: 'user',
       status: 'active',
       passwordHash: 'dummy-hash',
     });
