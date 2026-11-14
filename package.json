@@ -11,6 +11,7 @@
     "apps/*"
   ],
   "scripts": {
+    "dev:db": "node scripts/dev-db.js",
     "dev:api": "npm run dev --workspace=@borrowloop/api",
     "dev:worker": "npm run dev --workspace=@borrowloop/worker",
     "dev:web": "npm run dev --workspace=@borrowloop/web",
