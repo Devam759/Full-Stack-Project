@@ -12,13 +12,17 @@ const { UPLOAD_FOLDERS, ALLOWED_IMAGE_EXTENSIONS } = BUSINESS_CONFIG;
  * @param {string} userId
  * @returns {object} signed upload payload
  */
-export function generateUploadSignature(type, userId) {
-  const folder =
-    type === 'profile'
-      ? UPLOAD_FOLDERS.PROFILE
-      : type === 'handover'
-        ? UPLOAD_FOLDERS.HANDOVER
-        : `${UPLOAD_FOLDERS.ITEM}/${userId}`;
+export function generateUploadSignature(type, userId, options = {}) {
+  let folder;
+  if (type === 'profile') {
+    folder = UPLOAD_FOLDERS.PROFILE;
+  } else if (type === 'handover') {
+    const bookingId = options.bookingId || 'temp';
+    const stage = options.stage || 'pickup';
+    folder = `${UPLOAD_FOLDERS.HANDOVER}/${bookingId}/${stage}`;
+  } else {
+    folder = `${UPLOAD_FOLDERS.ITEM}/${userId}`;
+  }
 
   const timestamp = Math.floor(Date.now() / 1000);
 

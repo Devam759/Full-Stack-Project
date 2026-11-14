@@ -25,6 +25,7 @@ export { default as RefreshToken } from './models/RefreshToken.js';
 export { default as Conversation } from './models/Conversation.js';
 export { default as Message } from './models/Message.js';
 export { default as Notification } from './models/Notification.js';
+export { default as Handover } from './models/Handover.js';
 
 // Common
 export * from './common/dates.js';

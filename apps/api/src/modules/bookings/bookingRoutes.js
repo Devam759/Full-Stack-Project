@@ -19,9 +19,14 @@ import {
   createMessageSchema,
   confirmPinSchema,
   listMessagesQuerySchema,
+  handoverIssueQrSchema,
+  handoverScanSchema,
+  handoverFallbackCodeSchema,
+  handoverPhotosSchema,
 } from '@borrowloop/shared';
 import * as bookingController from './bookingController.js';
 import * as chatController from '../chat/chatController.js';
+import * as handoverController from '../handovers/handoverController.js';
 
 const router = Router();
 
@@ -42,6 +47,36 @@ const pinConfirmLimiter = createRateLimiter({
   windowSeconds: BUSINESS_CONFIG.CHAT.RATE_LIMITS.CONFIRM_PIN.windowSeconds,
   maxRequests: BUSINESS_CONFIG.CHAT.RATE_LIMITS.CONFIRM_PIN.maxRequests,
   keyPrefix: 'rl:chat:pin_confirm',
+  keyGenerator: (req) => req.user?.id || req.ip,
+});
+
+const issueQrLimiter = createRateLimiter({
+  get redis() {
+    return getRedisClient();
+  },
+  windowSeconds: BUSINESS_CONFIG.HANDOVER.RATE_LIMITS.ISSUE_QR.windowSeconds,
+  maxRequests: BUSINESS_CONFIG.HANDOVER.RATE_LIMITS.ISSUE_QR.maxRequests,
+  keyPrefix: 'rl:handover:issue_qr',
+  keyGenerator: (req) => req.user?.id || req.ip,
+});
+
+const scanLimiter = createRateLimiter({
+  get redis() {
+    return getRedisClient();
+  },
+  windowSeconds: BUSINESS_CONFIG.HANDOVER.RATE_LIMITS.SCAN.windowSeconds,
+  maxRequests: BUSINESS_CONFIG.HANDOVER.RATE_LIMITS.SCAN.maxRequests,
+  keyPrefix: 'rl:handover:scan',
+  keyGenerator: (req) => req.user?.id || req.ip,
+});
+
+const codeLimiter = createRateLimiter({
+  get redis() {
+    return getRedisClient();
+  },
+  windowSeconds: BUSINESS_CONFIG.HANDOVER.RATE_LIMITS.CODE.windowSeconds,
+  maxRequests: BUSINESS_CONFIG.HANDOVER.RATE_LIMITS.CODE.maxRequests,
+  keyPrefix: 'rl:handover:code',
   keyGenerator: (req) => req.user?.id || req.ip,
 });
 
@@ -119,6 +154,59 @@ router.post(
   validate({ body: confirmPinSchema }),
   chatController.confirmPin,
 );
-router.post('/:id/messages/read', chatController.markMessagesAsRead);
+// Handover & Return Endpoints (Phase 7)
+router.post(
+  '/:id/handover/qr',
+  issueQrLimiter,
+  validate({ body: handoverIssueQrSchema }),
+  handoverController.issuePickupQr,
+);
+
+router.post(
+  '/:id/handover/scan',
+  requireIdempotencyKey(),
+  scanLimiter,
+  validate({ body: handoverScanSchema }),
+  handoverController.scanPickupQr,
+);
+
+router.post(
+  '/:id/handover/code',
+  requireIdempotencyKey(),
+  codeLimiter,
+  validate({ body: handoverFallbackCodeSchema }),
+  handoverController.verifyPickupCode,
+);
+
+router.post(
+  '/:id/return/qr',
+  issueQrLimiter,
+  validate({ body: handoverIssueQrSchema }),
+  handoverController.issueReturnQr,
+);
+
+router.post(
+  '/:id/return/scan',
+  requireIdempotencyKey(),
+  scanLimiter,
+  validate({ body: handoverScanSchema }),
+  handoverController.scanReturnQr,
+);
+
+router.post(
+  '/:id/return/code',
+  requireIdempotencyKey(),
+  codeLimiter,
+  validate({ body: handoverFallbackCodeSchema }),
+  handoverController.verifyReturnCode,
+);
+
+router.post(
+  '/:id/photos',
+  validate({ body: handoverPhotosSchema }),
+  handoverController.registerPhotos,
+);
+
+router.get('/:id/handovers', handoverController.getHandovers);
 
 export default router;
