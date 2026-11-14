@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import mongoose from 'mongoose';
-import { setupTestDB, teardownTestDB } from '../../apps/api/tests/setup/dbTestHelper.js';
+import { setupTestDB, teardownTestDB } from '../../../apps/api/tests/setup/dbTestHelper.js';
 import IORedis from 'ioredis';
 import {
   Conversation,

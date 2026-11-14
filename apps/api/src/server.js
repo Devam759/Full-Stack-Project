@@ -2,7 +2,7 @@ import app from './app.js';
 import config from './config/index.js';
 import logger from './common/logger.js';
 import { connectDB, disconnectDB } from './db.js';
-import { closeRedis } from './redis.js';
+import { closeRedis, getRedisClient } from './redis.js';
 import { initSocketServer, closeSocketServer } from './sockets/socketServer.js';
 
 let server = null;
@@ -16,6 +16,10 @@ async function startServer() {
     }
 
     await connectDB();
+    const redis = getRedisClient();
+    if (redis && redis.status !== 'ready' && redis.status !== 'connecting') {
+      await redis.connect().catch(() => {});
+    }
 
     server = app.listen(config.PORT, () => {
       const boundPort = server.address().port;

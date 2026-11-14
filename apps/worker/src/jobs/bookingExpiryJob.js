@@ -361,6 +361,17 @@ export async function executeBookingExpiryJob({
             },
             { session, bookingId: updated._id, eventKey: `booking_pickup_expired_${updated._id}` },
           );
+
+          await emitDomainEvent(
+            'trust_score.penalty',
+            {
+              userId: updated.borrowerId,
+              bookingId: updated._id,
+              delta: -5,
+              reason: 'no_show',
+            },
+            { session, bookingId: updated._id, eventKey: `trust_penalty_noshow_${updated._id}` },
+          );
         });
       }
 

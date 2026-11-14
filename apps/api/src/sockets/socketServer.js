@@ -61,25 +61,21 @@ export function initSocketServer(httpServer) {
   // Attach Redis adapter if Redis is available
   try {
     const redis = getRedisClient();
-    if (redis && redis.status === 'ready') {
+    if (
+      redis &&
+      (redis.status === 'ready' || redis.status === 'connecting' || redis.status === 'wait')
+    ) {
+      if (redis.status === 'wait') {
+        redis.connect().catch(() => {});
+      }
       pubClient = redis.duplicate({
-        lazyConnect: true,
-        enableOfflineQueue: false,
         maxRetriesPerRequest: null,
       });
       subClient = redis.duplicate({
-        lazyConnect: true,
-        enableOfflineQueue: false,
         maxRetriesPerRequest: null,
       });
       pubClient.on('error', () => {});
       subClient.on('error', () => {});
-      pubClient
-        .connect()
-        .catch((err) => logger.warn({ err: err.message }, 'pubClient connect error'));
-      subClient
-        .connect()
-        .catch((err) => logger.warn({ err: err.message }, 'subClient connect error'));
       io.adapter(createAdapter(pubClient, subClient));
       logger.info('Socket.IO Redis adapter initialized successfully');
     }
@@ -127,6 +123,10 @@ export function initSocketServer(httpServer) {
       const redis = getRedisClient();
       const maxSockets = BUSINESS_CONFIG.CHAT.SOCKET_MAX_CONNECTIONS_PER_USER;
       const HEARTBEAT_TTL_MS = 5000;
+
+      if (redis && redis.status === 'wait') {
+        await redis.connect().catch(() => {});
+      }
 
       if (redis && redis.status === 'ready') {
         const cutoff = Date.now() - HEARTBEAT_TTL_MS;
@@ -176,6 +176,9 @@ export function initSocketServer(httpServer) {
 
     // Register socket connection with crash-safe heartbeat
     let heartbeatTimer = null;
+    if (redis && redis.status === 'wait') {
+      await redis.connect().catch(() => {});
+    }
     if (redis && redis.status === 'ready') {
       await redis.zadd(`user_sockets:${userId}`, Date.now(), socket.id);
       await redis.expire(`user_sockets:${userId}`, 60);

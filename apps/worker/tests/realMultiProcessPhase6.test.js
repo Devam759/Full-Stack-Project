@@ -29,7 +29,6 @@ describe('Item 1: Real-Process Multi-Instance Tests (Worker & API)', () => {
       await redis.ping();
       const res = await setupTestDB();
       mongoUri = res.uri;
-      await redis.flushall();
     } catch {
       redisAvailable = false;
       console.warn(
@@ -99,6 +98,7 @@ describe('Item 1: Real-Process Multi-Instance Tests (Worker & API)', () => {
       env: {
         ...process.env,
         PORT: '0',
+        FORCE_START: 'true',
         NODE_ENV: 'development',
         LOG_LEVEL: 'warn',
         ALLOW_DEMO_MONEY: 'true',
@@ -159,7 +159,13 @@ describe('Item 1: Real-Process Multi-Instance Tests (Worker & API)', () => {
       console.warn('UNVERIFIED: Redis container unavailable on 127.0.0.1:6379');
       return;
     }
-    await redis.flushall();
+    await redis
+      .del(
+        'bull:ledger_reconciliation_queue:repeat',
+        'bull:booking_lifecycle_queue:repeat',
+        'bull:scheduler_lifecycle_queue:repeat',
+      )
+      .catch(() => {});
     await clearTestDB();
 
     const w1 = spawnWorker({ TEST_RECONCILIATION_CRON: '2000', TEST_EXPIRY_CRON: '2000' });
@@ -205,7 +211,13 @@ describe('Item 1: Real-Process Multi-Instance Tests (Worker & API)', () => {
       console.warn('UNVERIFIED: Redis container unavailable on 127.0.0.1:6379');
       return;
     }
-    await redis.flushall();
+    await redis
+      .del(
+        'bull:ledger_reconciliation_queue:repeat',
+        'bull:booking_lifecycle_queue:repeat',
+        'bull:scheduler_lifecycle_queue:repeat',
+      )
+      .catch(() => {});
     await clearTestDB();
 
     const user = await User.create({
@@ -311,7 +323,13 @@ describe('Item 1: Real-Process Multi-Instance Tests (Worker & API)', () => {
       console.warn('UNVERIFIED: Redis container unavailable on 127.0.0.1:6379');
       return;
     }
-    await redis.flushall();
+    await redis
+      .del(
+        'bull:ledger_reconciliation_queue:repeat',
+        'bull:booking_lifecycle_queue:repeat',
+        'bull:scheduler_lifecycle_queue:repeat',
+      )
+      .catch(() => {});
     await clearTestDB();
 
     const userA = await User.create({

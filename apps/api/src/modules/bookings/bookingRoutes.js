@@ -164,6 +164,7 @@ router.post(
   validate({ body: createMessageSchema }),
   chatController.sendMessage,
 );
+router.post('/:id/messages/read', chatController.markMessagesAsRead);
 router.post(
   '/:id/pin/confirm',
   pinConfirmLimiter,
