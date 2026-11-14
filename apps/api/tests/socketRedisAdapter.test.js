@@ -14,6 +14,7 @@ describe('Socket.IO Redis Multi-Instance Adapter (Phase 6)', () => {
   let port2;
 
   let pub1, sub1, pub2, sub2;
+  const adapterKey = `socket_adapter_${Date.now()}_${Math.random().toString(36).slice(2)}`;
 
   beforeAll(async () => {
     // Spin up Redis pub/sub clients for server 1
@@ -27,7 +28,7 @@ describe('Socket.IO Redis Multi-Instance Adapter (Phase 6)', () => {
     // Instance 1
     server1 = http.createServer();
     io1 = new Server(server1, { transports: ['websocket'] });
-    io1.adapter(createAdapter(pub1, sub1));
+    io1.adapter(createAdapter(pub1, sub1, { key: adapterKey }));
 
     await new Promise((resolve) => {
       server1.listen(0, () => {
@@ -39,7 +40,7 @@ describe('Socket.IO Redis Multi-Instance Adapter (Phase 6)', () => {
     // Instance 2
     server2 = http.createServer();
     io2 = new Server(server2, { transports: ['websocket'] });
-    io2.adapter(createAdapter(pub2, sub2));
+    io2.adapter(createAdapter(pub2, sub2, { key: adapterKey }));
 
     await new Promise((resolve) => {
       server2.listen(0, () => {
@@ -179,7 +180,7 @@ describe('Socket.IO Redis Multi-Instance Adapter (Phase 6)', () => {
       const sub3 = new IORedis({ host: '127.0.0.1', port: 6379, maxRetriesPerRequest: null });
       const server3 = http.createServer();
       const io3 = new Server(server3, { transports: ['websocket'] });
-      io3.adapter(createAdapter(pub3, sub3));
+      io3.adapter(createAdapter(pub3, sub3, { key: adapterKey }));
 
       let port3;
       await new Promise((resolve) => {

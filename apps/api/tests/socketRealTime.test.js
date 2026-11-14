@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vites
 import http from 'http';
 import { io as Client } from 'socket.io-client';
 import mongoose from 'mongoose';
-import { MongoMemoryReplSet } from 'mongodb-memory-server';
+import { setupTestDB, teardownTestDB } from './setup/dbTestHelper.js';
 import IORedis from 'ioredis';
 import jwt from 'jsonwebtoken';
 import config from '../src/config/index.js';
@@ -16,7 +16,6 @@ import {
 } from '../src/sockets/socketServer.js';
 
 describe('Socket.IO Real-Time & Redis Adapter Integration (Phase 6)', () => {
-  let replSet;
   let redisClient;
   let httpServer;
   let serverPort;
@@ -35,14 +34,14 @@ describe('Socket.IO Real-Time & Redis Adapter Integration (Phase 6)', () => {
   let testBooking;
 
   beforeAll(async () => {
-    const testUri = process.env.MONGODB_TEST_URI;
-    if (testUri) {
-      await mongoose.connect(testUri);
-    } else {
-      replSet = await MongoMemoryReplSet.create({ replSet: { count: 1 } });
-      await mongoose.connect(replSet.getUri());
-    }
-    redisClient = new IORedis({ host: '127.0.0.1', port: 6379, maxRetriesPerRequest: null });
+    await setupTestDB();
+    redisClient = new IORedis({
+      host: '127.0.0.1',
+      port: 6379,
+      maxRetriesPerRequest: null,
+      lazyConnect: true,
+    });
+    await redisClient.connect().catch(() => {});
 
     const app = createApp();
     httpServer = http.createServer(app);
@@ -140,17 +139,7 @@ describe('Socket.IO Real-Time & Redis Adapter Integration (Phase 6)', () => {
     if (httpServer) {
       await new Promise((resolve) => httpServer.close(resolve));
     }
-    if (mongoose.connection.readyState !== 0) {
-      try {
-        if (mongoose.connection.db) {
-          await mongoose.connection.db.dropDatabase();
-        }
-      } catch {
-        // Ignore drop error
-      }
-      await mongoose.disconnect();
-    }
-    if (replSet) await replSet.stop({ force: true });
+    await teardownTestDB();
     if (redisClient) redisClient.disconnect();
   });
 

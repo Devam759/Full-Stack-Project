@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import request from 'supertest';
-import mongoose from 'mongoose';
-import { MongoMemoryReplSet } from 'mongodb-memory-server';
+import { setupTestDB, teardownTestDB } from './setup/dbTestHelper.js';
 import { createApp } from '../src/app.js';
 import { getRedisClient } from '../src/redis.js';
 import {
@@ -17,7 +16,6 @@ import { signAccessToken } from '../src/common/jwt.js';
 
 describe('Chat and Map Pin Integration (Phase 6)', () => {
   let app;
-  let replSet;
   let redisClient;
 
   let borrower;
@@ -30,15 +28,9 @@ describe('Chat and Map Pin Integration (Phase 6)', () => {
   let booking;
 
   beforeAll(async () => {
-    const testUri = process.env.MONGODB_TEST_URI;
-    if (testUri) {
-      await mongoose.connect(testUri);
-    } else {
-      replSet = await MongoMemoryReplSet.create({ replSet: { count: 1 } });
-      await mongoose.connect(replSet.getUri());
-    }
+    await setupTestDB();
     redisClient = getRedisClient();
-    if (redisClient.status !== 'ready' && redisClient.status !== 'connecting') {
+    if (redisClient && redisClient.status !== 'ready' && redisClient.status !== 'connecting') {
       await redisClient.connect().catch(() => {});
     }
     app = createApp();
@@ -136,18 +128,14 @@ describe('Chat and Map Pin Integration (Phase 6)', () => {
   });
 
   afterAll(async () => {
-    if (mongoose.connection.readyState !== 0) {
+    if (redisClient) {
       try {
-        if (mongoose.connection.db) {
-          await mongoose.connection.db.dropDatabase();
-        }
+        redisClient.disconnect();
       } catch {
-        // Ignore drop error
+        // Ignore
       }
-      await mongoose.disconnect();
     }
-    if (replSet) await replSet.stop({ force: true });
-    if (redisClient) redisClient.disconnect();
+    await teardownTestDB();
   });
 
   describe('Authorization and Access Control', () => {

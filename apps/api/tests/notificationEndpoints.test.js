@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import request from 'supertest';
-import mongoose from 'mongoose';
-import { MongoMemoryReplSet } from 'mongodb-memory-server';
+import { setupTestDB, teardownTestDB } from './setup/dbTestHelper.js';
 import IORedis from 'ioredis';
 import { createApp } from '../src/app.js';
 import { User, Notification } from '@borrowloop/server-core';
@@ -9,7 +8,6 @@ import { signAccessToken } from '../src/common/jwt.js';
 
 describe('Notification Endpoints Integration (Phase 6)', () => {
   let app;
-  let replSet;
   let redisClient;
 
   let userA;
@@ -18,14 +16,14 @@ describe('Notification Endpoints Integration (Phase 6)', () => {
   let tokenB;
 
   beforeAll(async () => {
-    const testUri = process.env.MONGODB_TEST_URI;
-    if (testUri) {
-      await mongoose.connect(testUri);
-    } else {
-      replSet = await MongoMemoryReplSet.create({ replSet: { count: 1 } });
-      await mongoose.connect(replSet.getUri());
-    }
-    redisClient = new IORedis({ host: '127.0.0.1', port: 6379, maxRetriesPerRequest: null });
+    await setupTestDB();
+    redisClient = new IORedis({
+      host: '127.0.0.1',
+      port: 6379,
+      maxRetriesPerRequest: null,
+      lazyConnect: true,
+    });
+    await redisClient.connect().catch(() => {});
     app = createApp();
 
     userA = await User.create({
@@ -93,18 +91,14 @@ describe('Notification Endpoints Integration (Phase 6)', () => {
   });
 
   afterAll(async () => {
-    if (mongoose.connection.readyState !== 0) {
+    if (redisClient) {
       try {
-        if (mongoose.connection.db) {
-          await mongoose.connection.db.dropDatabase();
-        }
+        redisClient.disconnect();
       } catch {
-        // Ignore drop error
+        // Ignore
       }
-      await mongoose.disconnect();
     }
-    if (replSet) await replSet.stop({ force: true });
-    if (redisClient) redisClient.disconnect();
+    await teardownTestDB();
   });
 
   describe('Listing Notifications and Unread Count', () => {

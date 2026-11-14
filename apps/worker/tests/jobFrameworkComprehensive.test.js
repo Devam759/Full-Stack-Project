@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import mongoose from 'mongoose';
-import { MongoMemoryReplSet } from 'mongodb-memory-server';
+import { setupTestDB, teardownTestDB } from '../../api/tests/setup/dbTestHelper.js';
 import IORedis from 'ioredis';
 import { Queue } from 'bullmq';
 import { User, Booking, DomainEvent } from '@borrowloop/server-core';
@@ -16,20 +16,13 @@ import {
 } from '../src/jobs/bookingExpiryJob.js';
 
 describe('Item 11: Job Framework, Scale Benchmarks & Repeatable Keys (Phase 6)', () => {
-  let replSet;
   let redisClient;
 
   let borrower;
   let lender;
 
   beforeAll(async () => {
-    const testUri = process.env.MONGODB_TEST_URI;
-    if (testUri) {
-      await mongoose.connect(testUri);
-    } else {
-      replSet = await MongoMemoryReplSet.create({ replSet: { count: 1 } });
-      await mongoose.connect(replSet.getUri());
-    }
+    await setupTestDB();
     redisClient = new IORedis({ host: '127.0.0.1', port: 6379, maxRetriesPerRequest: null });
 
     borrower = await User.create({
@@ -50,17 +43,7 @@ describe('Item 11: Job Framework, Scale Benchmarks & Repeatable Keys (Phase 6)',
   });
 
   afterAll(async () => {
-    if (mongoose.connection.readyState !== 0) {
-      try {
-        if (mongoose.connection.db) {
-          await mongoose.connection.db.dropDatabase();
-        }
-      } catch {
-        // Ignore
-      }
-      await mongoose.disconnect();
-    }
-    if (replSet) await replSet.stop({ force: true });
+    await teardownTestDB();
     if (redisClient) redisClient.disconnect();
   });
 
