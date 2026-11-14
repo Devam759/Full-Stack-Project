@@ -401,19 +401,16 @@ describe('Worker Outbox, Reminders, and Background Jobs (Phase 6)', () => {
     });
   });
 
-  describe('Deferred Jobs (Phase 7/8 Features)', () => {
-    it('executes Jobs 4, 5, 6 cleanly as no-ops with feature flags disabled', async () => {
+  describe('Active Phase 7 Background Jobs', () => {
+    it('executes Jobs 4, 5, 6 successfully as active jobs', async () => {
       const lateChargesRes = await accrueLateChargesJob({ redisClient });
       expect(lateChargesRes.success).toBe(true);
-      expect(lateChargesRes.noOp).toBe(true);
 
       const returnsRes = await autoCompleteReturnsJob({ redisClient });
       expect(returnsRes.success).toBe(true);
-      expect(returnsRes.noOp).toBe(true);
 
       const ratingsRes = await revealRatingsJob({ redisClient });
       expect(ratingsRes.success).toBe(true);
-      expect(ratingsRes.noOp).toBe(true);
     });
   });
 });

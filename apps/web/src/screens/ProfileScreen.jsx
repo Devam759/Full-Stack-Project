@@ -3,7 +3,6 @@ import { useAuth } from '../context/AuthContext.jsx';
 import { apiRequest } from '../api/client.js';
 import {
   User,
-  ShieldCheck,
   Wallet,
   LogOut,
   Edit2,
@@ -12,8 +11,11 @@ import {
   UserX,
   AlertCircle,
   CheckCircle,
+  Star,
 } from 'lucide-react';
 import { formatPaise } from '@borrowloop/shared';
+import TrustBadge from '../components/TrustBadge.jsx';
+import SuspensionBanner from '../components/SuspensionBanner.jsx';
 
 export function ProfileScreen({ onNavigate }) {
   const { user, logout, updateProfile } = useAuth();
@@ -30,6 +32,25 @@ export function ProfileScreen({ onNavigate }) {
   const [showPasswordModal, setShowPasswordModal] = useState(false);
 
   const [statusMessage, setStatusMessage] = useState({ text: '', type: '' });
+  const [ratings, setRatings] = useState([]);
+  const [ratingsLoading, setRatingsLoading] = useState(false);
+
+  useEffect(() => {
+    async function loadRatings() {
+      if (!user?._id && !user?.id) return;
+      try {
+        setRatingsLoading(true);
+        const uid = user?._id || user?.id;
+        const data = await apiRequest(`/users/${uid}/ratings`);
+        setRatings(data.ratings || []);
+      } catch {
+        // silent
+      } finally {
+        setRatingsLoading(false);
+      }
+    }
+    loadRatings();
+  }, [user]);
 
   useEffect(() => {
     async function loadBlocked() {
@@ -114,6 +135,9 @@ export function ProfileScreen({ onNavigate }) {
 
   return (
     <div className="max-w-md mx-auto p-4 space-y-4 pb-24">
+      {/* Suspension / Ban Warning Banner */}
+      <SuspensionBanner user={user} />
+
       {statusMessage.text && (
         <div
           className={`p-3 rounded-brand text-xs flex items-center gap-2 ${
@@ -157,27 +181,42 @@ export function ProfileScreen({ onNavigate }) {
               >
                 {user.emailVerified ? 'Email Verified' : 'Unverified'}
               </span>
-              <span className="text-[10px] text-text-muted font-medium capitalize">
-                Role: {user.role}
+              <span
+                className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium ${
+                  user.status === 'banned'
+                    ? 'bg-rose-100 text-rose-800'
+                    : user.banUntil && new Date(user.banUntil) > new Date()
+                      ? 'bg-amber-100 text-amber-800'
+                      : user.strikes === 1
+                        ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                        : 'bg-emerald-50 text-emerald-700'
+                }`}
+              >
+                {user.status === 'banned'
+                  ? 'Banned'
+                  : user.banUntil && new Date(user.banUntil) > new Date()
+                    ? 'Suspended'
+                    : user.strikes === 1
+                      ? '1 Strike'
+                      : 'Active'}
               </span>
             </div>
           </div>
         </div>
 
-        {/* Badges Bar: Trust Score & Demo Wallet */}
-        <div className="grid grid-cols-2 gap-2 pt-3 border-t border-slate-100">
-          <div className="p-2.5 rounded-brand bg-slate-50 border border-slate-100 flex items-center gap-2.5">
-            <ShieldCheck className="w-5 h-5 text-teal-600 shrink-0" />
-            <div>
-              <span className="block text-[10px] text-text-muted font-medium">Trust Score</span>
-              <span className="text-xs font-bold text-slate-900">{user.trustScore} / 100</span>
-            </div>
-          </div>
+        {/* Badges Bar: Trust Badge & Demo Wallet */}
+        <div className="flex items-center justify-between pt-3 border-t border-slate-100">
+          <TrustBadge
+            trustScore={user.trustScore}
+            ratingAvg={user.ratingAvg}
+            ratingCount={user.ratingCount}
+            size="md"
+          />
 
-          <div className="p-2.5 rounded-brand bg-slate-50 border border-slate-100 flex items-center gap-2.5">
-            <Wallet className="w-5 h-5 text-amber-600 shrink-0" />
-            <div>
-              <span className="block text-[10px] text-text-muted font-medium">Demo Wallet</span>
+          <div className="p-2 rounded-brand bg-slate-50 border border-slate-100 flex items-center gap-2">
+            <Wallet className="w-4 h-4 text-amber-600 shrink-0" />
+            <div className="text-right">
+              <span className="block text-[9px] text-text-muted font-medium">Demo Wallet</span>
               <span className="text-xs font-bold text-slate-900 font-mono">
                 {formatPaise(0, { showDemoTag: true })}
               </span>
@@ -263,6 +302,55 @@ export function ProfileScreen({ onNavigate }) {
           </div>
         </div>
       )}
+
+      {/* Revealed Reviews Section (Phase 7) */}
+      <div className="bg-surface rounded-brand border border-slate-200 p-4 shadow-sm space-y-3">
+        <div className="flex items-center justify-between">
+          <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+            <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
+            <span>Revealed Reviews ({ratings.length})</span>
+          </h3>
+          <span className="text-[10px] text-text-muted">Public Feedback</span>
+        </div>
+
+        {ratingsLoading ? (
+          <div className="text-xs text-text-muted py-2 text-center">Loading reviews...</div>
+        ) : ratings.length === 0 ? (
+          <p className="text-xs text-text-muted py-2">
+            No public reviews yet. Reviews are revealed once both parties submit or after 7 days.
+          </p>
+        ) : (
+          <div className="space-y-2.5 divide-y divide-slate-100">
+            {ratings.map((r) => (
+              <div key={r._id} className="pt-2.5 first:pt-0 space-y-1">
+                <div className="flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-1">
+                    {[1, 2, 3, 4, 5].map((s) => (
+                      <Star
+                        key={s}
+                        className={`w-3 h-3 ${
+                          s <= r.stars
+                            ? 'text-amber-400 fill-amber-400'
+                            : 'text-zinc-200 fill-zinc-100'
+                        }`}
+                      />
+                    ))}
+                    <span className="font-semibold text-slate-800 ml-1">
+                      {r.raterId?.name || 'Borrower'}
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-zinc-400">
+                    {new Date(r.revealedAt || r.createdAt).toLocaleDateString()}
+                  </span>
+                </div>
+                {r.comment && (
+                  <p className="text-xs text-slate-600 italic">&ldquo;{r.comment}&rdquo;</p>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* Security Actions */}
       <div className="space-y-2">

@@ -13,6 +13,9 @@ import {
   runInTransactionWithRetry,
   emitDomainEvent,
   saveIdempotencyRecord,
+  settleBookingCompletion,
+  recordTrustEvent,
+  recompute,
 } from '@borrowloop/server-core';
 import config from '../../config/index.js';
 
@@ -310,7 +313,6 @@ export async function scanHandover({
 
   // Proximity check
   let distanceMeters = null;
-  let geoChecked = false;
 
   let issuerGeo = null;
   const raw = await getHandoverGeo(redisClient, `handover:geo:${booking._id}:${type}`);
@@ -343,7 +345,6 @@ export async function scanHandover({
         { distanceMeters: Math.round(distanceMeters) },
       );
     }
-    geoChecked = true;
   } else {
     // If GPS is unavailable, allow only the fallback code and set geoChecked: false
     throw new AppError(
@@ -813,4 +814,228 @@ export async function getBookingHandovers({ bookingId, userId }) {
 
   const handovers = await Handover.find({ bookingId: booking._id }).lean();
   return { handovers };
+}
+
+/**
+ * Completes return settlement internally (shared by manual confirm and system auto-complete).
+ */
+export async function completeReturnSettlement({
+  bookingId,
+  completedBy = 'lender',
+  actorId = null,
+  idempotency = null,
+}) {
+  let borrowerIdForTrust = null;
+  let lenderIdForTrust = null;
+  let isOnTime = false;
+  const now = new Date();
+
+  const result = await runInTransactionWithRetry(async (session) => {
+    const b = await Booking.findById(bookingId).session(session);
+    if (!b) {
+      throw new AppError(ERROR_CODES.BOOKING_NOT_FOUND, 'Booking not found', 404);
+    }
+
+    if (b.status !== 'returned') {
+      throw new AppError(
+        ERROR_CODES.INVALID_BOOKING_TRANSITION,
+        `Cannot complete booking from status '${b.status}'. Status must be 'returned'.`,
+        409,
+      );
+    }
+
+    b.status = 'completed';
+    b.completedAt = now;
+    b.completedBy = completedBy;
+    b.statusHistory.push({
+      fromStatus: 'returned',
+      toStatus: 'completed',
+      actorId: actorId || b.lenderId,
+      actorRole: completedBy === 'system' ? 'system' : 'lender',
+      reason:
+        completedBy === 'system'
+          ? 'Auto-completed by system after review window expired'
+          : 'Lender confirmed item return (All good)',
+      timestamp: now,
+    });
+
+    // Release any remaining item day locks
+    await ItemDayLock.deleteMany({ bookingId: b._id }).session(session);
+
+    // Settle ledger completion
+    const settlementResult = await settleBookingCompletion({
+      bookingId: b._id,
+      lenderId: b.lenderId,
+      borrowerId: b.borrowerId,
+      rentPaise: b.rentPaise,
+      depositPaise: b.depositPaise,
+      lateChargePaise: b.lateChargePaise || 0,
+      idempotency,
+      session,
+      throwOnAlreadyApplied: false,
+    });
+
+    borrowerIdForTrust = b.borrowerId;
+    lenderIdForTrust = b.lenderId;
+    isOnTime = b.returnAt && b.dueAt && new Date(b.returnAt) <= new Date(b.dueAt);
+
+    // On-time completed trust events: written for both parties only if returnAt <= dueAt
+    if (isOnTime) {
+      await recordTrustEvent({
+        userId: b.borrowerId,
+        type: 'on_time_completed',
+        counterpartyId: b.lenderId,
+        role: 'borrow',
+        bookingId: b._id,
+        eventKey: `on_time_${b._id}_${b.borrowerId}`,
+        session,
+      });
+
+      await recordTrustEvent({
+        userId: b.lenderId,
+        type: 'on_time_completed',
+        counterpartyId: b.borrowerId,
+        role: 'lend',
+        bookingId: b._id,
+        eventKey: `on_time_${b._id}_${b.lenderId}`,
+        session,
+      });
+    }
+
+    await b.save({ session });
+
+    await emitDomainEvent({
+      type: 'booking.completed',
+      bookingId: b._id,
+      actorId: actorId || b.lenderId,
+      payload: {
+        completedBy,
+        settlement: settlementResult,
+      },
+      session,
+    });
+
+    const responsePayload = {
+      booking: b.toJSON(),
+      settlement: settlementResult,
+    };
+
+    if (idempotency?.key && actorId) {
+      await saveIdempotencyRecord({
+        userId: actorId,
+        key: idempotency.key,
+        requestHash: idempotency.requestHash,
+        statusCode: 200,
+        responseBody: responsePayload,
+        session,
+      });
+    }
+
+    return responsePayload;
+  });
+
+  if (isOnTime && borrowerIdForTrust && lenderIdForTrust) {
+    try {
+      await recompute(borrowerIdForTrust);
+      await recompute(lenderIdForTrust);
+    } catch {
+      // Background recomputation failures should not block response
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Handles lender return review: outcome 'ok' or 'problem'.
+ */
+export async function confirmReturn({
+  bookingId,
+  outcome,
+  note = null,
+  userId,
+  idempotency = null,
+}) {
+  const booking = await Booking.findById(bookingId);
+  if (!booking) {
+    throw new AppError(ERROR_CODES.BOOKING_NOT_FOUND, 'Booking not found', 404);
+  }
+
+  const lenderIdStr = (booking.lenderId?._id || booking.lenderId).toString();
+  if (userId.toString() !== lenderIdStr) {
+    throw new AppError(ERROR_CODES.FORBIDDEN, 'Only the lender can confirm the return', 403);
+  }
+
+  if (booking.status !== 'returned') {
+    throw new AppError(
+      ERROR_CODES.INVALID_BOOKING_TRANSITION,
+      `Cannot confirm return when booking status is '${booking.status}'. Booking must be 'returned'.`,
+      409,
+    );
+  }
+
+  const now = new Date();
+
+  if (outcome === 'problem') {
+    if (!note || !note.trim()) {
+      throw new AppError(
+        ERROR_CODES.VALIDATION_ERROR,
+        'Note is required when reporting a problem',
+        400,
+      );
+    }
+
+    return runInTransactionWithRetry(async (session) => {
+      const b = await Booking.findById(booking._id).session(session);
+      b.status = 'disputed';
+      b.disputeReason = 'damage';
+      b.disputeOpenedAt = now;
+      b.statusHistory.push({
+        fromStatus: 'returned',
+        toStatus: 'disputed',
+        actorId: userId,
+        actorRole: 'lender',
+        reason: note.trim(),
+        timestamp: now,
+      });
+      await b.save({ session });
+
+      await emitDomainEvent({
+        type: 'dispute.requested',
+        bookingId: b._id,
+        actorId: userId,
+        payload: {
+          disputeReason: 'damage',
+          note: note.trim(),
+          reportedBy: userId,
+        },
+        session,
+      });
+
+      const responsePayload = {
+        booking: b.toJSON(),
+        disputed: true,
+      };
+
+      if (idempotency?.key) {
+        await saveIdempotencyRecord({
+          userId,
+          key: idempotency.key,
+          requestHash: idempotency.requestHash,
+          statusCode: 200,
+          responseBody: responsePayload,
+          session,
+        });
+      }
+
+      return responsePayload;
+    });
+  }
+
+  return completeReturnSettlement({
+    bookingId: booking._id,
+    completedBy: 'lender',
+    actorId: userId,
+    idempotency,
+  });
 }

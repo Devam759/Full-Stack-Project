@@ -14,10 +14,18 @@ import {
   Loader2,
   CheckCircle2,
   User,
+  QrCode,
+  Star,
+  Camera,
 } from 'lucide-react';
 import { formatPaise } from '@borrowloop/shared';
 import { useAuth } from '../context/AuthContext.jsx';
+import { useSocket } from '../context/SocketContext.jsx';
 import { ChatPanel } from '../components/ChatPanel.jsx';
+import QRModal from '../components/QRModal.jsx';
+import QRScannerModal from '../components/QRScannerModal.jsx';
+import ConditionPhotosUploader from '../components/ConditionPhotosUploader.jsx';
+import RatingModal from '../components/RatingModal.jsx';
 
 export function BookingDetailScreen({ bookingId, onBack, onNavigate }) {
   const { user, apiFetch } = useAuth();
@@ -40,6 +48,18 @@ export function BookingDetailScreen({ bookingId, onBack, onNavigate }) {
   const [showExtensionModal, setShowExtensionModal] = useState(false);
   const [newEndDate, setNewEndDate] = useState('');
 
+  // Phase 7 Handover, Return & Ratings state
+  const [showQrModal, setShowQrModal] = useState(false);
+  const [qrType, setQrType] = useState('pickup');
+  const [showScannerModal, setShowScannerModal] = useState(false);
+  const [scannerType, setScannerType] = useState('pickup');
+  const [showConfirmReturnModal, setShowConfirmReturnModal] = useState(false);
+  const [returnProblemNote, setReturnProblemNote] = useState('');
+  const [showRatingModal, setShowRatingModal] = useState(false);
+
+  // Live Socket.IO Updates (booking:updated)
+  const { socket } = useSocket();
+
   // Fetch booking details
   const loadBooking = useCallback(async () => {
     try {
@@ -59,6 +79,49 @@ export function BookingDetailScreen({ bookingId, onBack, onNavigate }) {
       loadBooking();
     }
   }, [bookingId, loadBooking]);
+
+  // Live real-time socket updates
+  useEffect(() => {
+    if (!socket || !bookingId) return;
+    const handleBookingUpdated = (data) => {
+      if (data?.bookingId === bookingId) {
+        loadBooking();
+      }
+    };
+    socket.on('booking:updated', handleBookingUpdated);
+    return () => {
+      socket.off('booking:updated', handleBookingUpdated);
+    };
+  }, [socket, bookingId, loadBooking]);
+
+  // Return review confirmation handler
+  async function handleConfirmReturn(outcome) {
+    if (outcome === 'problem' && !returnProblemNote.trim()) {
+      setError('Note is required when reporting a problem');
+      return;
+    }
+    try {
+      setActionLoading(true);
+      setError(null);
+      const idempotencyKey = crypto.randomUUID();
+      await apiFetch(`/bookings/${bookingId}/return/confirm`, {
+        method: 'POST',
+        headers: { 'Idempotency-Key': idempotencyKey },
+        body: JSON.stringify({ outcome, note: returnProblemNote.trim() }),
+      });
+      setShowConfirmReturnModal(false);
+      setActionNotice(
+        outcome === 'ok'
+          ? 'Return confirmed! Settlement completed successfully.'
+          : 'Problem reported. Care moderation team will review.',
+      );
+      await loadBooking();
+    } catch (err) {
+      setError(err.message || 'Failed to confirm return');
+    } finally {
+      setActionLoading(false);
+    }
+  }
 
   if (loading) {
     return (
@@ -280,7 +343,12 @@ export function BookingDetailScreen({ bookingId, onBack, onNavigate }) {
 
       {/* Payment Details */}
       <div className="bg-surface rounded-2xl border border-slate-200 p-4 mb-4 shadow-xs space-y-2">
-        <h3 className="font-semibold text-sm text-slate-900">Financial Summary</h3>
+        <div className="flex items-center justify-between pb-1 border-b border-slate-100">
+          <h3 className="font-semibold text-sm text-slate-900">Financial Summary</h3>
+          <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium bg-amber-100 text-amber-800 border border-amber-300">
+            Demo money
+          </span>
+        </div>
         <div className="flex justify-between text-xs text-slate-600">
           <span>Rent ({booking.days} days)</span>
           <span>{formatPaise(booking.rentPaise)}</span>
@@ -289,10 +357,16 @@ export function BookingDetailScreen({ bookingId, onBack, onNavigate }) {
           <span>Security Deposit (Refundable)</span>
           <span>{formatPaise(booking.depositPaise)}</span>
         </div>
+        {booking.lateChargePaise > 0 && (
+          <div className="flex justify-between text-xs text-rose-600 font-semibold">
+            <span>Late Fee (Overdue)</span>
+            <span>+{formatPaise(booking.lateChargePaise)}</span>
+          </div>
+        )}
         <div className="pt-2 border-t border-slate-100 flex justify-between font-bold text-sm text-slate-900">
           <span>Total Booking Value</span>
           <span className="text-primary">
-            {formatPaise(booking.rentPaise + booking.depositPaise)}
+            {formatPaise(booking.rentPaise + booking.depositPaise + (booking.lateChargePaise || 0))}
           </span>
         </div>
       </div>
@@ -427,6 +501,176 @@ export function BookingDetailScreen({ bookingId, onBack, onNavigate }) {
               Request Extension
             </button>
           )}
+
+        {/* Phase 7: Handover Pickup Section */}
+        {booking.status === 'accepted' && (
+          <div className="bg-surface rounded-2xl border border-slate-200 p-4 shadow-xs space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold text-sm text-slate-900 flex items-center gap-1.5">
+                <QrCode className="w-4 h-4 text-primary" /> Handover Pickup
+              </h3>
+              <span className="text-[11px] text-text-muted">Proximity verified</span>
+            </div>
+
+            {isLender ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setQrType('pickup');
+                  setShowQrModal(true);
+                }}
+                className="w-full py-3 bg-primary text-white font-semibold rounded-xl hover:bg-primary-dark transition-colors flex items-center justify-center gap-2 text-sm shadow-xs"
+              >
+                <QrCode className="w-4 h-4" />
+                <span>Show Pickup QR & Fallback Code</span>
+              </button>
+            ) : isBorrower ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setScannerType('pickup');
+                  setShowScannerModal(true);
+                }}
+                className="w-full py-3 bg-primary text-white font-semibold rounded-xl hover:bg-primary-dark transition-colors flex items-center justify-center gap-2 text-sm shadow-xs"
+              >
+                <Camera className="w-4 h-4" />
+                <span>Scan Lender&apos;s QR Code</span>
+              </button>
+            ) : null}
+
+            <ConditionPhotosUploader
+              bookingId={booking._id}
+              stage="pickup"
+              onUploadComplete={loadBooking}
+            />
+          </div>
+        )}
+
+        {/* Phase 7: Handover Return Section */}
+        {booking.status === 'picked_up' && (
+          <div className="bg-surface rounded-2xl border border-slate-200 p-4 shadow-xs space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold text-sm text-slate-900 flex items-center gap-1.5">
+                <QrCode className="w-4 h-4 text-primary" /> Item Return
+              </h3>
+              <span className="text-[11px] text-text-muted">Due: {booking.endDate}</span>
+            </div>
+
+            {isBorrower ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setQrType('return');
+                  setShowQrModal(true);
+                }}
+                className="w-full py-3 bg-primary text-white font-semibold rounded-xl hover:bg-primary-dark transition-colors flex items-center justify-center gap-2 text-sm shadow-xs"
+              >
+                <QrCode className="w-4 h-4" />
+                <span>Show Return QR & Fallback Code</span>
+              </button>
+            ) : isLender ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setScannerType('return');
+                  setShowScannerModal(true);
+                }}
+                className="w-full py-3 bg-primary text-white font-semibold rounded-xl hover:bg-primary-dark transition-colors flex items-center justify-center gap-2 text-sm shadow-xs"
+              >
+                <Camera className="w-4 h-4" />
+                <span>Scan Borrower&apos;s Return QR</span>
+              </button>
+            ) : null}
+
+            <ConditionPhotosUploader
+              bookingId={booking._id}
+              stage="return"
+              onUploadComplete={loadBooking}
+            />
+          </div>
+        )}
+
+        {/* Phase 7: Return Confirmation & Inspection */}
+        {booking.status === 'returned' && (
+          <div className="bg-surface rounded-2xl border border-amber-200 p-4 shadow-xs space-y-3 bg-amber-50/50">
+            <h3 className="font-semibold text-sm text-amber-900 flex items-center gap-1.5">
+              <Clock className="w-4 h-4 text-amber-600" /> Return Review Window
+            </h3>
+
+            {isLender ? (
+              <div className="space-y-3">
+                <p className="text-xs text-amber-800">
+                  The borrower has returned your item. Please inspect its condition and confirm
+                  settlement within 24 hours.
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    disabled={actionLoading}
+                    onClick={() => handleConfirmReturn('ok')}
+                    className="py-2.5 bg-emerald-600 text-white font-semibold rounded-xl hover:bg-emerald-700 disabled:opacity-50 text-xs transition"
+                  >
+                    All Good (Settle)
+                  </button>
+                  <button
+                    type="button"
+                    disabled={actionLoading}
+                    onClick={() => setShowConfirmReturnModal(true)}
+                    className="py-2.5 bg-rose-50 text-rose-700 border border-rose-200 font-semibold rounded-xl hover:bg-rose-100 disabled:opacity-50 text-xs transition"
+                  >
+                    Report a Problem
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="text-xs text-amber-800">
+                <span className="font-semibold block">Waiting for lender review</span>
+                <span>
+                  The lender has 24 hours to confirm condition. If no problem is reported, funds
+                  will automatically settle to both wallets.
+                </span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Phase 7: Disputed status */}
+        {booking.status === 'disputed' && (
+          <div className="bg-surface rounded-2xl border border-rose-200 p-4 shadow-xs space-y-2 bg-rose-50/50">
+            <h3 className="font-semibold text-sm text-rose-900 flex items-center gap-1.5">
+              <AlertTriangle className="w-4 h-4 text-rose-600" /> Booking Under Dispute
+            </h3>
+            <p className="text-xs text-rose-800">
+              Reason: <span className="font-semibold">{booking.disputeReason}</span>. Funds remain
+              frozen until customer care reviews the case.
+            </p>
+          </div>
+        )}
+
+        {/* Phase 7: Completed & Ratings */}
+        {booking.status === 'completed' && (
+          <div className="bg-surface rounded-2xl border border-emerald-200 p-4 shadow-xs space-y-3 bg-emerald-50/40">
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold text-sm text-emerald-900 flex items-center gap-1.5">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600" /> Booking Completed & Settled
+              </h3>
+              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                Demo money
+              </span>
+            </div>
+            <p className="text-xs text-emerald-800">
+              Rental funds and deposit have been settled according to platform rules.
+            </p>
+            <button
+              type="button"
+              onClick={() => setShowRatingModal(true)}
+              className="w-full py-2.5 bg-primary text-white font-semibold rounded-xl hover:bg-primary-dark transition-colors flex items-center justify-center gap-2 text-xs shadow-xs"
+            >
+              <Star className="w-3.5 h-3.5 fill-amber-300 text-amber-300" />
+              <span>Leave a Review (Blind Rating)</span>
+            </button>
+          </div>
+        )}
 
         {/* Phase 6: Booking Chat & Handover Map Pin */}
         <div className="pt-4">
@@ -572,6 +816,86 @@ export function BookingDetailScreen({ bookingId, onBack, onNavigate }) {
                 className="flex-1 py-2 text-xs font-semibold bg-primary text-white rounded-lg hover:bg-primary-dark disabled:opacity-50"
               >
                 Submit Request
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Handover / Return QR Modal */}
+      <QRModal
+        isOpen={showQrModal}
+        onClose={() => setShowQrModal(false)}
+        bookingId={booking._id}
+        type={qrType}
+      />
+
+      {/* Handover / Return Scanner Modal */}
+      <QRScannerModal
+        isOpen={showScannerModal}
+        onClose={() => setShowScannerModal(false)}
+        bookingId={booking._id}
+        type={scannerType}
+        onSuccess={() => {
+          loadBooking();
+          setActionNotice(
+            scannerType === 'pickup'
+              ? 'Item successfully picked up!'
+              : 'Item successfully returned!',
+          );
+        }}
+      />
+
+      {/* Blind Rating Modal */}
+      <RatingModal
+        isOpen={showRatingModal}
+        onClose={() => setShowRatingModal(false)}
+        bookingId={booking._id}
+        targetRole={isBorrower ? 'lender' : 'borrower'}
+        onSuccess={() => {
+          loadBooking();
+          setActionNotice(
+            'Rating submitted! It will be revealed once both parties submit or after 7 days.',
+          );
+        }}
+      />
+
+      {/* Problem Report Modal */}
+      {showConfirmReturnModal && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+          <div className="bg-surface rounded-2xl max-w-sm w-full p-5 shadow-lg space-y-4">
+            <h3 className="font-bold text-slate-900 text-base">Report Return Problem</h3>
+            <p className="text-xs text-text-muted">
+              Reporting a problem will open a dispute with customer care. Security deposit and
+              rental funds will remain frozen until review.
+            </p>
+            <div>
+              <label className="block text-xs font-medium text-slate-700 mb-1">
+                Describe the problem (Required)
+              </label>
+              <textarea
+                rows={3}
+                value={returnProblemNote}
+                onChange={(e) => setReturnProblemNote(e.target.value)}
+                placeholder="e.g. Scratched lens, missing cables, deep dent..."
+                className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
+              />
+            </div>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setShowConfirmReturnModal(false)}
+                className="flex-1 py-2 text-xs font-semibold bg-slate-100 text-slate-700 rounded-lg"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={actionLoading || !returnProblemNote.trim()}
+                onClick={() => handleConfirmReturn('problem')}
+                className="flex-1 py-2 text-xs font-semibold bg-rose-600 text-white rounded-lg hover:bg-rose-700 disabled:opacity-50"
+              >
+                Submit Report
               </button>
             </div>
           </div>

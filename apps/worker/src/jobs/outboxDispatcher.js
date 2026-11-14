@@ -6,7 +6,14 @@
 
 import { Queue } from 'bullmq';
 import { Emitter } from '@socket.io/redis-emitter';
-import { DomainEvent, Notification, User, runWithRedisLock } from '@borrowloop/server-core';
+import {
+  DomainEvent,
+  Notification,
+  User,
+  runWithRedisLock,
+  recordTrustEvent,
+  recompute,
+} from '@borrowloop/server-core';
 import { BUSINESS_CONFIG } from '@borrowloop/shared';
 import logger from '../logger.js';
 import { EMAIL_QUEUE_NAME } from './emailWorker.js';
@@ -504,6 +511,30 @@ async function dispatchSingleEvent(event, redisClient, userCache = null) {
             dedupeKey,
           });
         }
+      }
+      break;
+    }
+
+    case 'trust_score.penalty': {
+      const { userId, delta, reason, bookingId } = payload;
+      if (userId) {
+        // Skip automatic no-show events (no-show penalty is only applied via Phase 8 care dispute)
+        if (reason === 'no_show') {
+          break;
+        }
+
+        const eventKey = event.eventKey ? `te_${event.eventKey}` : `trust_penalty_${event._id}`;
+
+        await recordTrustEvent({
+          userId,
+          type: reason, // late_cancel, lost_dispute, rejected_damage_claim
+          delta: typeof delta === 'number' ? delta : null,
+          bookingId: bookingId || event.bookingId,
+          eventKey,
+          meta: { originalEventId: event._id, ...payload },
+        });
+
+        await recompute(userId);
       }
       break;
     }

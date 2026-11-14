@@ -5,7 +5,12 @@
 
 import { Router } from 'express';
 import validate from '../../common/validate.js';
-import { authenticate, requireVerifiedEmail } from '../../common/authMiddleware.js';
+import {
+  authenticate,
+  requireVerifiedEmail,
+  requireNotFrozen,
+  requireNotSuspended,
+} from '../../common/authMiddleware.js';
 import {
   createItemSchema,
   updateItemSchema,
@@ -20,6 +25,8 @@ itemRouter.post(
   '/',
   authenticate(),
   requireVerifiedEmail,
+  requireNotFrozen,
+  requireNotSuspended,
   validate({ body: createItemSchema }),
   itemController.createItem,
 );

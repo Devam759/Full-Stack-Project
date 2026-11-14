@@ -34,10 +34,6 @@ export function authenticate(expectedAudience = TOKEN_AUDIENCES.USER) {
         return next(new AppError(ERROR_CODES.ACCOUNT_BANNED, 'Account has been banned', 403));
       }
 
-      if (user.status === 'frozen') {
-        return next(new AppError(ERROR_CODES.ACCOUNT_FROZEN, 'Account has been frozen', 403));
-      }
-
       if (user.status === 'deleted') {
         return next(new AppError(ERROR_CODES.UNAUTHORIZED, 'Account has been deleted', 401));
       }
@@ -109,6 +105,47 @@ export function requireCompleteProfile(req, _res, next) {
         'Profile photo must be uploaded before continuing',
         400,
         { step: 'photo_required' },
+      ),
+    );
+  }
+
+  return next();
+}
+
+/**
+ * Middleware requiring account not to be frozen.
+ */
+export function requireNotFrozen(req, _res, next) {
+  if (!req.user) {
+    return next(new AppError(ERROR_CODES.UNAUTHORIZED, 'Authentication required', 401));
+  }
+
+  if (req.user.status === 'frozen') {
+    return next(new AppError(ERROR_CODES.ACCOUNT_FROZEN, 'Account has been frozen', 403));
+  }
+
+  return next();
+}
+
+/**
+ * Middleware requiring account not to be suspended (banUntil > now).
+ */
+export function requireNotSuspended(req, _res, next) {
+  if (!req.user) {
+    return next(new AppError(ERROR_CODES.UNAUTHORIZED, 'Authentication required', 401));
+  }
+
+  if (req.user.status === 'banned') {
+    return next(new AppError(ERROR_CODES.ACCOUNT_BANNED, 'Account has been banned', 403));
+  }
+
+  if (req.user.banUntil && new Date(req.user.banUntil) > new Date()) {
+    return next(
+      new AppError(
+        ERROR_CODES.ACCOUNT_SUSPENDED,
+        `Account suspended until ${new Date(req.user.banUntil).toISOString()}`,
+        403,
+        { banUntil: req.user.banUntil },
       ),
     );
   }

@@ -5,7 +5,12 @@
 
 import { Router } from 'express';
 import { validate } from '../../common/validate.js';
-import { authenticate, requireVerifiedEmail } from '../../common/authMiddleware.js';
+import {
+  authenticate,
+  requireVerifiedEmail,
+  requireNotFrozen,
+  requireNotSuspended,
+} from '../../common/authMiddleware.js';
 import { requireIdempotencyKey } from '../../common/idempotencyMiddleware.js';
 import { createRateLimiter } from '../../common/rateLimiter.js';
 import { getRedisClient } from '../../redis.js';
@@ -23,10 +28,13 @@ import {
   handoverScanSchema,
   handoverFallbackCodeSchema,
   handoverPhotosSchema,
+  returnConfirmSchema,
+  createRatingSchema,
 } from '@borrowloop/shared';
 import * as bookingController from './bookingController.js';
 import * as chatController from '../chat/chatController.js';
 import * as handoverController from '../handovers/handoverController.js';
+import * as ratingController from '../ratings/ratingController.js';
 
 const router = Router();
 
@@ -88,6 +96,8 @@ router.use(requireVerifiedEmail);
 router.post(
   '/',
   requireIdempotencyKey(),
+  requireNotFrozen,
+  requireNotSuspended,
   validate({ body: createBookingSchema }),
   bookingController.createBooking,
 );
@@ -99,7 +109,13 @@ router.get('/', validate({ query: bookingQuerySchema }), bookingController.listB
 router.get('/:id', bookingController.getBooking);
 
 // Accept a booking request
-router.post('/:id/accept', requireIdempotencyKey(), bookingController.acceptBooking);
+router.post(
+  '/:id/accept',
+  requireIdempotencyKey(),
+  requireNotFrozen,
+  requireNotSuspended,
+  bookingController.acceptBooking,
+);
 
 // Reject a booking request
 router.post(
@@ -202,11 +218,28 @@ router.post(
 );
 
 router.post(
+  '/:id/return/confirm',
+  requireIdempotencyKey(),
+  validate({ body: returnConfirmSchema }),
+  handoverController.confirmReturn,
+);
+
+router.post(
   '/:id/photos',
   validate({ body: handoverPhotosSchema }),
   handoverController.registerPhotos,
 );
 
 router.get('/:id/handovers', handoverController.getHandovers);
+
+// Blind Ratings (Phase 7)
+router.post(
+  '/:id/rating',
+  requireIdempotencyKey(),
+  validate({ body: createRatingSchema }),
+  ratingController.createRating,
+);
+
+router.get('/:id/ratings', ratingController.getBookingRatings);
 
 export default router;

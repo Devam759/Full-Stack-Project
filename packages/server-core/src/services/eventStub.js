@@ -25,8 +25,23 @@ const recordedEvents = [];
  * @param {any} [options.actorId=null]
  * @returns {Promise<object>}
  */
-export async function emitDomainEvent(eventName, payload = {}, options = {}) {
-  const { session = null, eventKey = null, bookingId = null, actorId = null } = options;
+export async function emitDomainEvent(eventNameOrObj, payload = {}, options = {}) {
+  let eventName = eventNameOrObj;
+  let eventPayload = payload;
+  let eventOptions = options;
+
+  if (typeof eventNameOrObj === 'object' && eventNameOrObj !== null) {
+    eventName = eventNameOrObj.type || eventNameOrObj.eventName;
+    eventPayload = eventNameOrObj.payload || {};
+    eventOptions = {
+      session: eventNameOrObj.session || options.session || null,
+      eventKey: eventNameOrObj.eventKey || options.eventKey || null,
+      bookingId: eventNameOrObj.bookingId || options.bookingId || null,
+      actorId: eventNameOrObj.actorId || options.actorId || null,
+    };
+  }
+
+  const { session = null, eventKey = null, bookingId = null, actorId = null } = eventOptions;
 
   // Item 5: In product code, require session or eventKey, otherwise throw
   if (!session && !eventKey && process.env.NODE_ENV !== 'test') {
@@ -40,7 +55,7 @@ export async function emitDomainEvent(eventName, payload = {}, options = {}) {
   const event = {
     id: `evt-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
     eventName,
-    payload,
+    payload: eventPayload,
     timestamp: new Date().toISOString(),
   };
 
@@ -49,11 +64,11 @@ export async function emitDomainEvent(eventName, payload = {}, options = {}) {
     recordedEvents.push(event);
   }
 
-  logger.info({ eventName, payload }, `Domain Event Emitted: ${eventName}`);
+  logger.info({ eventName, payload: eventPayload }, `Domain Event Emitted: ${eventName}`);
 
   if (session || eventKey) {
-    const rawBookingId = bookingId || payload.bookingId;
-    const rawActorId = actorId || payload.userId;
+    const rawBookingId = bookingId || eventPayload.bookingId;
+    const rawActorId = actorId || eventPayload.userId || eventPayload.actorId;
 
     const validBookingId =
       rawBookingId && mongoose.Types.ObjectId.isValid(rawBookingId)
@@ -78,7 +93,7 @@ export async function emitDomainEvent(eventName, payload = {}, options = {}) {
           type: eventName,
           bookingId: validBookingId,
           actorId: validActorId,
-          payload,
+          payload: eventPayload,
           timestamp: new Date(),
           status: 'pending',
         },

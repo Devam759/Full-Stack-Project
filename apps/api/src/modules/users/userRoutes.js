@@ -1,9 +1,14 @@
 import { Router } from 'express';
-import { updateProfileSchema, deleteAccountSchema } from '@borrowloop/shared';
+import {
+  updateProfileSchema,
+  deleteAccountSchema,
+  listRatingsQuerySchema,
+} from '@borrowloop/shared';
 import validate from '../../common/validate.js';
 import { authenticate } from '../../common/authMiddleware.js';
 import * as userController from './userController.js';
 import { getUserItems } from '../items/itemController.js';
+import * as ratingController from '../ratings/ratingController.js';
 
 export const userRouter = Router();
 
@@ -27,5 +32,10 @@ userRouter.post('/:id/block', authenticate(), userController.blockUser);
 userRouter.delete('/:id/block', authenticate(), userController.unblockUser);
 
 userRouter.get('/:id', userController.getPublicProfile);
+userRouter.get(
+  '/:id/ratings',
+  validate({ query: listRatingsQuerySchema }),
+  ratingController.getUserRatings,
+);
 
 export default userRouter;

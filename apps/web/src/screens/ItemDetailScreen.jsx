@@ -2,14 +2,15 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   ArrowLeft,
   MapPin,
-  ShieldCheck,
   Calendar as CalendarIcon,
   ChevronLeft,
   ChevronRight,
   AlertTriangle,
   Clock,
+  Star,
 } from 'lucide-react';
 import { formatPaise, BUSINESS_CONFIG } from '@borrowloop/shared';
+import TrustBadge from '../components/TrustBadge.jsx';
 
 export function ItemDetailScreen({ itemId, onBack, onRequestBooking }) {
   const [item, setItem] = useState(null);
@@ -212,7 +213,16 @@ export function ItemDetailScreen({ itemId, onBack, onRequestBooking }) {
 
       {/* Title & Description */}
       <div>
-        <h1 className="text-xl font-heading font-bold text-slate-900">{item.title}</h1>
+        <div className="flex items-center justify-between gap-2">
+          <h1 className="text-xl font-heading font-bold text-slate-900">{item.title}</h1>
+          {item.ratingCount > 0 && (
+            <div className="flex items-center gap-1 text-xs text-zinc-600 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200 shrink-0">
+              <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+              <span className="font-bold text-slate-800">{item.ratingAvg?.toFixed(1)}</span>
+              <span className="text-zinc-400">({item.ratingCount})</span>
+            </div>
+          )}
+        </div>
         <p className="text-xs text-text-muted mt-1 leading-relaxed whitespace-pre-line">
           {item.description}
         </p>
@@ -268,10 +278,12 @@ export function ItemDetailScreen({ itemId, onBack, onRequestBooking }) {
               <div className="text-xs text-text-muted">Lender</div>
             </div>
           </div>
-          <div className="flex items-center gap-1 px-2.5 py-1 bg-emerald-50 border border-emerald-200 rounded-lg text-emerald-800 text-xs font-semibold">
-            <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-            <span>Trust score: {item.ownerId.trustScore ?? 50}</span>
-          </div>
+          <TrustBadge
+            trustScore={item.ownerId.trustScore ?? 50}
+            ratingAvg={item.ownerId.ratingAvg ?? 0}
+            ratingCount={item.ownerId.ratingCount ?? 0}
+            size="sm"
+          />
         </div>
       )}
 

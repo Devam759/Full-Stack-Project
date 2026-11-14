@@ -26,6 +26,8 @@ export { default as Conversation } from './models/Conversation.js';
 export { default as Message } from './models/Message.js';
 export { default as Notification } from './models/Notification.js';
 export { default as Handover } from './models/Handover.js';
+export { default as TrustEvent } from './models/TrustEvent.js';
+export { default as Rating } from './models/Rating.js';
 
 // Common
 export * from './common/dates.js';
@@ -40,3 +42,9 @@ export * from './services/reconciliationService.js';
 export { default as reconciliationService } from './services/reconciliationService.js';
 export * from './services/eventStub.js';
 export * from './services/bookingTransitions.js';
+export * from './services/trustService.js';
+export { default as trustService } from './services/trustService.js';
+export * from './services/strikeService.js';
+export { default as strikeService } from './services/strikeService.js';
+export * from './services/ratingService.js';
+export { default as ratingService } from './services/ratingService.js';

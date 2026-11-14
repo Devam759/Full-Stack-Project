@@ -168,3 +168,22 @@ export async function getHandovers(req, res, next) {
     next(err);
   }
 }
+
+export async function confirmReturn(req, res, next) {
+  try {
+    const { id } = req.params;
+    const { outcome, note } = req.body;
+
+    const result = await handoverService.confirmReturn({
+      bookingId: id,
+      outcome,
+      note,
+      userId: req.user._id,
+      idempotency: req.idempotency,
+    });
+
+    res.status(200).json(result);
+  } catch (err) {
+    next(err);
+  }
+}
