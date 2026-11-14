@@ -31,7 +31,7 @@ describe('Socket.IO Redis Multi-Instance Adapter (Phase 6)', () => {
     io1.adapter(createAdapter(pub1, sub1, { key: adapterKey }));
 
     await new Promise((resolve) => {
-      server1.listen(0, () => {
+      server1.listen(0, '127.0.0.1', () => {
         _port1 = server1.address().port;
         resolve();
       });
@@ -43,7 +43,7 @@ describe('Socket.IO Redis Multi-Instance Adapter (Phase 6)', () => {
     io2.adapter(createAdapter(pub2, sub2, { key: adapterKey }));
 
     await new Promise((resolve) => {
-      server2.listen(0, () => {
+      server2.listen(0, '127.0.0.1', () => {
         port2 = server2.address().port;
         resolve();
       });
@@ -63,11 +63,11 @@ describe('Socket.IO Redis Multi-Instance Adapter (Phase 6)', () => {
 
   describe('Item 6: Real-Time Resilience & Multi-Instance Tests (20 Runs)', () => {
     it('proves A on instance 1 reaches B on instance 2 once (repeated 20 times with 0 failures)', async () => {
-      const client1 = Client(`http://localhost:${_port1}`, {
+      const client1 = Client(`http://127.0.0.1:${_port1}`, {
         transports: ['websocket'],
         reconnection: false,
       });
-      const client2 = Client(`http://localhost:${port2}`, {
+      const client2 = Client(`http://127.0.0.1:${port2}`, {
         transports: ['websocket'],
         reconnection: false,
       });
@@ -112,11 +112,11 @@ describe('Socket.IO Redis Multi-Instance Adapter (Phase 6)', () => {
     });
 
     it('delivers pin:proposed, pin:confirmed, and booking:updated to clients on both instances (20 runs)', async () => {
-      const client1 = Client(`http://localhost:${_port1}`, {
+      const client1 = Client(`http://127.0.0.1:${_port1}`, {
         transports: ['websocket'],
         reconnection: false,
       });
-      const client2 = Client(`http://localhost:${port2}`, {
+      const client2 = Client(`http://127.0.0.1:${port2}`, {
         transports: ['websocket'],
         reconnection: false,
       });
@@ -184,14 +184,14 @@ describe('Socket.IO Redis Multi-Instance Adapter (Phase 6)', () => {
 
       let port3;
       await new Promise((resolve) => {
-        server3.listen(0, () => {
+        server3.listen(0, '127.0.0.1', () => {
           port3 = server3.address().port;
           resolve();
         });
       });
 
       const room = `conv:failover_${Date.now()}`;
-      const client = Client(`http://localhost:${port3}`, {
+      const client = Client(`http://127.0.0.1:${port3}`, {
         transports: ['websocket'],
         reconnection: false,
       });
@@ -223,7 +223,7 @@ describe('Socket.IO Redis Multi-Instance Adapter (Phase 6)', () => {
       }
 
       // Client reconnects to Server 2
-      const reconnectedClient = Client(`http://localhost:${port2}`, {
+      const reconnectedClient = Client(`http://127.0.0.1:${port2}`, {
         transports: ['websocket'],
         reconnection: false,
       });
@@ -256,7 +256,7 @@ describe('Socket.IO Redis Multi-Instance Adapter (Phase 6)', () => {
 
       const connectPromises = Array.from({ length: clientCount }, (_, idx) => {
         return new Promise((resolve, reject) => {
-          const client = Client(`http://localhost:${port2}`, {
+          const client = Client(`http://127.0.0.1:${port2}`, {
             transports: ['websocket'],
             reconnection: false,
             timeout: 10000,

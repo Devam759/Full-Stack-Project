@@ -7,6 +7,7 @@ import User from '../src/models/User.js';
 import Wallet from '../src/models/Wallet.js';
 import LedgerEntry from '../src/models/LedgerEntry.js';
 import { signAccessToken } from '../src/common/jwt.js';
+import config from '../src/config/index.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const serverScript = path.resolve(__dirname, '../src/server.js');
@@ -93,9 +94,8 @@ describe('Suite 9: Multi-Instance API Concurrency & Balance Consistency (Separat
       FORCE_START: 'true',
       ALLOW_DEMO_MONEY: 'true',
       MONGODB_URI: mongoUri,
-      JWT_ACCESS_SECRET: process.env.JWT_ACCESS_SECRET || 'testsecretkey12345678901234567890',
-      JWT_SECRET: process.env.JWT_SECRET || 'testsecretkey12345678901234567890',
-      JWT_REFRESH_SECRET: process.env.JWT_REFRESH_SECRET || 'testrefreshkey12345678901234567890',
+      JWT_ACCESS_SECRET: config.JWT_ACCESS_SECRET,
+      JWT_REFRESH_SECRET: config.JWT_REFRESH_SECRET,
     };
 
     const instanceA = await spawnServerInstance(baseEnv);

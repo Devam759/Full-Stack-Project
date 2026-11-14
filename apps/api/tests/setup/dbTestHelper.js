@@ -17,7 +17,7 @@ export async function setupTestDB() {
     let targetUri = uriFromEnv;
     try {
       const url = new URL(uriFromEnv);
-      const workerId = process.env.VITEST_POOL_ID || process.pid;
+      const workerId = `${process.env.VITEST_POOL_ID || process.pid}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
       const baseDb = url.pathname.replace(/^\//, '') || 'borrowloop_test';
       url.pathname = `/${baseDb}_${workerId}`;
       targetUri = url.toString();

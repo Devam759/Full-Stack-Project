@@ -48,7 +48,7 @@ describe('Socket.IO Real-Time & Redis Adapter Integration (Phase 6)', () => {
     initSocketServer(httpServer);
 
     await new Promise((resolve) => {
-      httpServer.listen(0, () => {
+      httpServer.listen(0, '127.0.0.1', () => {
         serverPort = httpServer.address().port;
         resolve();
       });
@@ -147,7 +147,7 @@ describe('Socket.IO Real-Time & Redis Adapter Integration (Phase 6)', () => {
   describe('Item 5: Socket Security & Authentication Tests', () => {
     it('refuses connection for no token', async () => {
       await new Promise((resolve) => {
-        const client = Client(`http://localhost:${serverPort}`, {
+        const client = Client(`http://127.0.0.1:${serverPort}`, {
           transports: ['websocket'],
           reconnection: false,
         });
@@ -162,7 +162,7 @@ describe('Socket.IO Real-Time & Redis Adapter Integration (Phase 6)', () => {
 
     it('refuses connection for expired token', async () => {
       await new Promise((resolve) => {
-        const client = Client(`http://localhost:${serverPort}`, {
+        const client = Client(`http://127.0.0.1:${serverPort}`, {
           auth: { token: expiredToken },
           transports: ['websocket'],
           reconnection: false,
@@ -181,7 +181,7 @@ describe('Socket.IO Real-Time & Redis Adapter Integration (Phase 6)', () => {
       config.JWT_AUDIENCE = 'borrowloop-api';
       try {
         await new Promise((resolve) => {
-          const client = Client(`http://localhost:${serverPort}`, {
+          const client = Client(`http://127.0.0.1:${serverPort}`, {
             auth: { token: wrongAudienceToken },
             transports: ['websocket'],
             reconnection: false,
@@ -201,7 +201,7 @@ describe('Socket.IO Real-Time & Redis Adapter Integration (Phase 6)', () => {
     it('refuses connection for banned and frozen users', async () => {
       // Banned
       await new Promise((resolve) => {
-        const client = Client(`http://localhost:${serverPort}`, {
+        const client = Client(`http://127.0.0.1:${serverPort}`, {
           auth: { token: bannedToken },
           transports: ['websocket'],
           reconnection: false,
@@ -216,7 +216,7 @@ describe('Socket.IO Real-Time & Redis Adapter Integration (Phase 6)', () => {
 
       // Frozen
       await new Promise((resolve) => {
-        const client = Client(`http://localhost:${serverPort}`, {
+        const client = Client(`http://127.0.0.1:${serverPort}`, {
           auth: { token: frozenToken },
           transports: ['websocket'],
           reconnection: false,
@@ -232,7 +232,7 @@ describe('Socket.IO Real-Time & Redis Adapter Integration (Phase 6)', () => {
 
     it('refuses joining a conversation you are not a participant of', async () => {
       await new Promise((resolve) => {
-        const client = Client(`http://localhost:${serverPort}`, {
+        const client = Client(`http://127.0.0.1:${serverPort}`, {
           auth: { token: outsiderToken },
           transports: ['websocket'],
           reconnection: false,
@@ -261,7 +261,7 @@ describe('Socket.IO Real-Time & Redis Adapter Integration (Phase 6)', () => {
       });
 
       await new Promise((resolve) => {
-        const client = Client(`http://localhost:${serverPort}`, {
+        const client = Client(`http://127.0.0.1:${serverPort}`, {
           auth: { token: activeToken },
           transports: ['websocket'],
           reconnection: false,
@@ -287,7 +287,7 @@ describe('Socket.IO Real-Time & Redis Adapter Integration (Phase 6)', () => {
 
     it('disconnects user immediately mid-session when banned or cut off', async () => {
       await new Promise((resolve) => {
-        const client = Client(`http://localhost:${serverPort}`, {
+        const client = Client(`http://127.0.0.1:${serverPort}`, {
           auth: { token: activeToken },
           transports: ['websocket'],
           reconnection: false,
@@ -362,7 +362,7 @@ describe('Socket.IO Real-Time & Redis Adapter Integration (Phase 6)', () => {
       for (let i = 0; i < 5; i++) {
         connectPromises.push(
           new Promise((resolve) => {
-            const client = Client(`http://localhost:${serverPort}`, {
+            const client = Client(`http://127.0.0.1:${serverPort}`, {
               auth: { token: activeToken },
               transports: ['websocket'],
               reconnection: false,
@@ -379,7 +379,7 @@ describe('Socket.IO Real-Time & Redis Adapter Integration (Phase 6)', () => {
 
       // 6th connection should be rejected with TOO_MANY_CONNECTIONS
       await new Promise((resolve) => {
-        const excessClient = Client(`http://localhost:${serverPort}`, {
+        const excessClient = Client(`http://127.0.0.1:${serverPort}`, {
           auth: { token: activeToken },
           transports: ['websocket'],
           reconnection: false,
@@ -398,7 +398,7 @@ describe('Socket.IO Real-Time & Redis Adapter Integration (Phase 6)', () => {
 
     it('rejects oversized socket payloads exceeding 10KB limit', async () => {
       await new Promise((resolve) => {
-        const client = Client(`http://localhost:${serverPort}`, {
+        const client = Client(`http://127.0.0.1:${serverPort}`, {
           auth: { token: activeToken },
           transports: ['websocket'],
           reconnection: false,
@@ -429,7 +429,7 @@ describe('Socket.IO Real-Time & Redis Adapter Integration (Phase 6)', () => {
 
     it('validates per-event payload with Zod schema and returns structured acks', async () => {
       await new Promise((resolve) => {
-        const client = Client(`http://localhost:${serverPort}`, {
+        const client = Client(`http://127.0.0.1:${serverPort}`, {
           auth: { token: activeToken },
           transports: ['websocket'],
           reconnection: false,

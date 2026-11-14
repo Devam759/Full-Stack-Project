@@ -55,7 +55,7 @@ describe('CHAT & SOCKETS Verification: Items 8, 9, 10, 11, 12, and 13', () => {
     server = http.createServer();
     initSocketServer(server);
     await new Promise((resolve) => {
-      server.listen(0, () => {
+      server.listen(0, '127.0.0.1', () => {
         serverPort = server.address().port;
         resolve();
       });
@@ -531,7 +531,7 @@ describe('CHAT & SOCKETS Verification: Items 8, 9, 10, 11, 12, and 13', () => {
         users.push(u);
 
         const token = signAccessToken({ sub: u._id.toString(), role: u.role });
-        const client = ClientIO(`http://localhost:${serverPort}`, {
+        const client = ClientIO(`http://127.0.0.1:${serverPort}`, {
           auth: { token },
           transports: ['websocket'],
           reconnection: false,
@@ -563,7 +563,7 @@ describe('CHAT & SOCKETS Verification: Items 8, 9, 10, 11, 12, and 13', () => {
       const reconnectedClients = [];
       for (const u of users) {
         const token = signAccessToken({ sub: u._id.toString(), role: u.role });
-        const c = ClientIO(`http://localhost:${serverPort}`, {
+        const c = ClientIO(`http://127.0.0.1:${serverPort}`, {
           auth: { token },
           transports: ['websocket'],
           reconnection: false,
@@ -603,7 +603,7 @@ describe('CHAT & SOCKETS Verification: Items 8, 9, 10, 11, 12, and 13', () => {
       });
 
       const token = signAccessToken({ sub: user._id.toString(), role: user.role });
-      const client = ClientIO(`http://localhost:${serverPort}`, {
+      const client = ClientIO(`http://127.0.0.1:${serverPort}`, {
         auth: { token },
         transports: ['websocket'],
         reconnection: false,
