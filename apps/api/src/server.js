@@ -21,7 +21,7 @@ async function startServer() {
       await redis.connect().catch(() => {});
     }
 
-    server = app.listen(config.PORT, () => {
+    server = app.listen(config.PORT, '0.0.0.0', () => {
       const boundPort = server.address().port;
       initSocketServer(server);
       console.info(`SERVER_PORT:${boundPort}`);

@@ -65,6 +65,12 @@ async function waitForServer(port, maxAttempts = 60) {
       if (res.ok || res.status === 200) return true;
     } catch (err) {
       lastError = err;
+      try {
+        const res2 = await fetch(`http://localhost:${port}/ready`);
+        if (res2.ok || res2.status === 200) return true;
+      } catch (err2) {
+        lastError = err2;
+      }
     }
     await new Promise((r) => setTimeout(r, 200));
   }
@@ -89,6 +95,7 @@ describe('Suite 15: Multi-Instance API Concurrency (Separate Processes Competing
       FORCE_START: 'true',
       ALLOW_DEMO_MONEY: 'true',
       MONGODB_URI: mongoUri,
+      JWT_ACCESS_SECRET: process.env.JWT_ACCESS_SECRET || 'testsecretkey12345678901234567890',
       JWT_SECRET: process.env.JWT_SECRET || 'testsecretkey12345678901234567890',
       JWT_REFRESH_SECRET: process.env.JWT_REFRESH_SECRET || 'testrefreshkey12345678901234567890',
     };

@@ -126,6 +126,7 @@ describe('Socket.IO Real-Time & Redis Adapter Integration (Phase 6)', () => {
   });
 
   beforeEach(async () => {
+    await Block.deleteMany({});
     if (redisClient && redisClient.status === 'ready') {
       const keys = await redisClient.keys('user_sockets:*');
       if (keys.length > 0) await redisClient.del(...keys);

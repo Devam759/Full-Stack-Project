@@ -70,9 +70,13 @@ export function initSocketServer(httpServer) {
       }
       pubClient = redis.duplicate({
         maxRetriesPerRequest: null,
+        enableOfflineQueue: true,
+        lazyConnect: false,
       });
       subClient = redis.duplicate({
         maxRetriesPerRequest: null,
+        enableOfflineQueue: true,
+        lazyConnect: false,
       });
       pubClient.on('error', () => {});
       subClient.on('error', () => {});
@@ -160,6 +164,8 @@ export function initSocketServer(httpServer) {
   // Connection Lifecycle
   io.on('connection', async (socket) => {
     const userId = socket.user.id;
+    socket.join(`user:${userId}`);
+    logger.info({ userId, socketId: socket.id }, 'User connected to real-time socket');
     const redis = getRedisClient();
 
     // Item 11: Disconnect socket when access token expires
@@ -193,9 +199,6 @@ export function initSocketServer(httpServer) {
     } else {
       userSocketCounts.set(userId, (userSocketCounts.get(userId) || 0) + 1);
     }
-
-    socket.join(`user:${userId}`);
-    logger.info({ userId, socketId: socket.id }, 'User connected to real-time socket');
 
     socket.on('conversation:join', async ({ conversationId }, callback) => {
       try {

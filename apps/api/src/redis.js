@@ -9,7 +9,7 @@ export function getRedisClient() {
     redisClient = new Redis(config.REDIS_URL, {
       maxRetriesPerRequest: 3,
       lazyConnect: true,
-      enableOfflineQueue: false,
+      enableOfflineQueue: true,
     });
 
     redisClient.on('error', (err) => {
