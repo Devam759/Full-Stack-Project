@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import request from 'supertest';
 import mongoose from 'mongoose';
-import { MongoMemoryReplSet } from 'mongodb-memory-server-core';
+import { setupTestDB, teardownTestDB } from './setup/dbTestHelper.js';
 import { BUSINESS_CONFIG } from '@borrowloop/shared';
 import {
   User,
@@ -17,7 +17,6 @@ import {
 import { createApp } from '../src/app.js';
 import { signAccessToken } from '../src/common/jwt.js';
 
-let replSet;
 let app;
 let adminToken;
 let careAgentToken;
@@ -26,10 +25,7 @@ let adminUserId;
 const { TOKEN_AUDIENCES } = BUSINESS_CONFIG;
 
 beforeAll(async () => {
-  replSet = await MongoMemoryReplSet.create({
-    replSet: { count: 1, storageEngine: 'wiredTiger' },
-  });
-  await mongoose.connect(replSet.getUri());
+  await setupTestDB();
 
   await User.init();
   await Wallet.init();
@@ -75,10 +71,7 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  await mongoose.disconnect();
-  if (replSet) {
-    await replSet.stop();
-  }
+  await teardownTestDB();
 });
 
 describe('Sub-step 9b: Admin Analytics, Audit Log & Ledger Reconciliation', () => {

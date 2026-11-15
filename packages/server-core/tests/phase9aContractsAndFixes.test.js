@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import mongoose from 'mongoose';
-import { MongoMemoryReplSet } from 'mongodb-memory-server-core';
+import { setupTestDB, teardownTestDB } from '../../../apps/api/tests/setup/dbTestHelper.js';
 import User from '../src/models/User.js';
 import AuditLog from '../src/models/AuditLog.js';
 import TrustEvent from '../src/models/TrustEvent.js';
@@ -9,13 +9,8 @@ import SystemSetting from '../src/models/SystemSetting.js';
 import { recordTrustEvent, recompute } from '../src/services/trustService.js';
 import { applyStrike, reverseStrike } from '../src/services/strikeService.js';
 
-let replSet;
-
 beforeAll(async () => {
-  replSet = await MongoMemoryReplSet.create({
-    replSet: { count: 1, storageEngine: 'wiredTiger' },
-  });
-  await mongoose.connect(replSet.getUri());
+  await setupTestDB();
   await AuditLog.init();
   await TrustEvent.init();
   await User.init();
@@ -24,10 +19,7 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  await mongoose.disconnect();
-  if (replSet) {
-    await replSet.stop();
-  }
+  await teardownTestDB();
 });
 
 describe('Sub-step 9a: Contracts, Models and Fixes', () => {

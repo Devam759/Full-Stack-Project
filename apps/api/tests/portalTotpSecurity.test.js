@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import mongoose from 'mongoose';
-import { MongoMemoryReplSet } from 'mongodb-memory-server-core';
+import { setupTestDB, teardownTestDB } from './setup/dbTestHelper.js';
 import User from '../src/models/User.js';
 import RefreshToken from '../src/models/RefreshToken.js';
 import { signPreTotpToken } from '../src/common/jwt.js';
@@ -8,22 +7,14 @@ import { generateTotpSecret } from '../src/services/totpService.js';
 import { verifyPortalTotp } from '../src/modules/portal/portalAuthService.js';
 import * as OTPAuth from 'otpauth';
 
-let replSet;
-
 beforeAll(async () => {
-  replSet = await MongoMemoryReplSet.create({
-    replSet: { count: 1, storageEngine: 'wiredTiger' },
-  });
-  await mongoose.connect(replSet.getUri());
+  await setupTestDB();
   await User.init();
   await RefreshToken.init();
 });
 
 afterAll(async () => {
-  await mongoose.disconnect();
-  if (replSet) {
-    await replSet.stop();
-  }
+  await teardownTestDB();
 });
 
 describe('Portal TOTP Security & Multi-Instance Replay Protection (Sub-step 9a)', () => {

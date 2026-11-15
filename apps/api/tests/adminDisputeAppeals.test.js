@@ -8,7 +8,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import request from 'supertest';
 import mongoose from 'mongoose';
-import { MongoMemoryReplSet } from 'mongodb-memory-server';
+import { setupTestDB, teardownTestDB } from './setup/dbTestHelper.js';
 import { BUSINESS_CONFIG } from '@borrowloop/shared';
 import {
   User,
@@ -27,7 +27,6 @@ import app from '../src/app.js';
 const { TOKEN_AUDIENCES } = BUSINESS_CONFIG;
 
 describe('Sub-step 9d: Admin Dispute Appeals and Money Reversal', () => {
-  let replSet;
   let adminUser;
   let adminToken;
   let careAgentUser;
@@ -40,11 +39,7 @@ describe('Sub-step 9d: Admin Dispute Appeals and Money Reversal', () => {
   let testItem;
 
   beforeAll(async () => {
-    replSet = await MongoMemoryReplSet.create({
-      replSet: { count: 1, storageEngine: 'wiredTiger' },
-    });
-    const uri = replSet.getUri();
-    await mongoose.connect(uri);
+    await setupTestDB();
 
     // Admin user (unbiased decider)
     adminUser = await User.create({
@@ -140,12 +135,7 @@ describe('Sub-step 9d: Admin Dispute Appeals and Money Reversal', () => {
   });
 
   afterAll(async () => {
-    if (mongoose.connection.readyState !== 0) {
-      await mongoose.disconnect();
-    }
-    if (replSet) {
-      await replSet.stop();
-    }
+    await teardownTestDB();
   });
 
   describe('RBAC Verification', () => {
