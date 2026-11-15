@@ -20,6 +20,9 @@ export function generateUploadSignature(type, userId, options = {}) {
     const bookingId = options.bookingId || 'temp';
     const stage = options.stage || 'pickup';
     folder = `${UPLOAD_FOLDERS.HANDOVER}/${bookingId}/${stage}`;
+  } else if (type === 'dispute') {
+    const disputeId = options.disputeId || options.bookingId || userId;
+    folder = `${UPLOAD_FOLDERS.DISPUTE}/${disputeId}`;
   } else {
     folder = `${UPLOAD_FOLDERS.ITEM}/${userId}`;
   }
@@ -73,9 +76,11 @@ export function isValidCloudinaryPhotoUrl(url, expectedType = 'profile', expecte
       ? UPLOAD_FOLDERS.PROFILE
       : expectedType === 'handover'
         ? UPLOAD_FOLDERS.HANDOVER
-        : expectedUserId
-          ? `${UPLOAD_FOLDERS.ITEM}/${expectedUserId}`
-          : UPLOAD_FOLDERS.ITEM;
+        : expectedType === 'dispute'
+          ? UPLOAD_FOLDERS.DISPUTE
+          : expectedUserId
+            ? `${UPLOAD_FOLDERS.ITEM}/${expectedUserId}`
+            : UPLOAD_FOLDERS.ITEM;
 
   try {
     const parsed = new URL(url);

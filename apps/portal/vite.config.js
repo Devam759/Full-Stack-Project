@@ -7,6 +7,6 @@ export default defineConfig({
     port: 5174,
   },
   test: {
-    environment: 'happy-dom',
+    environment: 'jsdom',
   },
 });

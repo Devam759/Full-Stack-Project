@@ -22,6 +22,7 @@ const ledgerOperationSchema = new mongoose.Schema(
         'deposit_release',
         'booking_cancel_refund',
         'settlement',
+        'dispute_settlement',
       ],
     },
     opRef: {

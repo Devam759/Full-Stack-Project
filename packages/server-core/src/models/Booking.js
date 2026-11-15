@@ -193,7 +193,7 @@ const bookingSchema = new mongoose.Schema(
     },
     completedBy: {
       type: String,
-      enum: ['lender', 'system'],
+      enum: ['lender', 'system', 'care'],
       default: null,
     },
     returnConfirmDeadline: {
@@ -202,7 +202,7 @@ const bookingSchema = new mongoose.Schema(
     },
     disputeReason: {
       type: String,
-      enum: ['damage', 'not_returned'],
+      enum: ['damage', 'not_returned', 'condition_mismatch', 'no_show'],
       default: null,
     },
     disputeOpenedAt: {

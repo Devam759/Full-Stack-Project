@@ -297,6 +297,58 @@ export const BOOKING_TRANSITIONS = Object.freeze([
       'emit_dispute_requested_event',
     ]),
   },
+  // 19. Open condition mismatch dispute by borrower (while now <= dueAt)
+  {
+    from: 'picked_up',
+    event: 'OPEN_CONDITION_DISPUTE',
+    to: 'disputed',
+    actors: Object.freeze(['borrower']),
+    guards: Object.freeze(['booking_is_picked_up', 'now_lte_due_at']),
+    ledgerOp: null,
+    opRef: null,
+    sideEffects: Object.freeze([
+      'freeze_late_charges',
+      'set_dispute_reason_condition_mismatch',
+      'emit_dispute_requested_event',
+    ]),
+  },
+  // 20. Open no-show dispute by borrower or lender (start date reached and pickup not expired)
+  {
+    from: 'accepted',
+    event: 'OPEN_NO_SHOW_DISPUTE',
+    to: 'disputed',
+    actors: Object.freeze(['borrower', 'lender']),
+    guards: Object.freeze(['booking_is_accepted', 'start_date_reached', 'pickup_not_expired']),
+    ledgerOp: null,
+    opRef: null,
+    sideEffects: Object.freeze(['set_dispute_reason_no_show', 'emit_dispute_requested_event']),
+  },
+  // 21. Care agent or admin resolves dispute (transitions to completed with completedBy: 'care')
+  {
+    from: 'disputed',
+    event: 'RESOLVE_DISPUTE',
+    to: 'completed',
+    actors: Object.freeze(['care_agent', 'admin']),
+    guards: Object.freeze(['booking_is_disputed', 'dispute_decision_valid']),
+    ledgerOp: 'dispute_settlement',
+    opRef: 'disputeId',
+    sideEffects: Object.freeze([
+      'set_completed_by_care',
+      'settle_dispute_funds',
+      'emit_completed_event',
+    ]),
+  },
+  // 22. Care agent or admin resolves no-show dispute (transitions to cancelled with full refund)
+  {
+    from: 'disputed',
+    event: 'RESOLVE_NO_SHOW_DISPUTE',
+    to: 'cancelled',
+    actors: Object.freeze(['care_agent', 'admin']),
+    guards: Object.freeze(['booking_is_disputed', 'is_no_show_dispute']),
+    ledgerOp: 'dispute_settlement',
+    opRef: 'disputeId',
+    sideEffects: Object.freeze(['refund_all_frozen_funds', 'emit_cancelled_event']),
+  },
 ]);
 
 /**
@@ -304,7 +356,7 @@ export const BOOKING_TRANSITIONS = Object.freeze([
  *
  * @param {string | null} fromStatus
  * @param {string} event
- * @param {'borrower' | 'lender' | 'system' | 'admin'} actorRole
+ * @param {'borrower' | 'lender' | 'system' | 'admin' | 'care_agent'} actorRole
  * @returns {{ allowed: boolean, transition?: typeof BOOKING_TRANSITIONS[0], reason?: string }}
  */
 export function canTransition(fromStatus, event, actorRole) {

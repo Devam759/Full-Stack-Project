@@ -10,6 +10,10 @@ import {
   AlertCircle,
   LogOut,
 } from 'lucide-react';
+import DisputeQueue from './components/DisputeQueue.jsx';
+import CaseFileView from './components/CaseFileView.jsx';
+import ModerationQueue from './components/ModerationQueue.jsx';
+import UserLookup from './components/UserLookup.jsx';
 
 export function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -21,6 +25,11 @@ export function App() {
   const [loading, setLoading] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
   const [tempToken, setTempToken] = useState('');
+  const [token, setToken] = useState('');
+
+  // Portal Navigation State
+  const [activeNav, setActiveNav] = useState('disputes'); // 'disputes' | 'moderation' | 'users' | 'settings'
+  const [selectedDisputeId, setSelectedDisputeId] = useState(null);
 
   const handleCredentialsSubmit = async (e) => {
     e.preventDefault();
@@ -45,13 +54,7 @@ export function App() {
       setTempToken(data.tempToken);
       setStep('totp');
     } catch (err) {
-      if (err.message && !err.message.includes('fetch') && !err.message.includes('Failed')) {
-        setError(err.message);
-      } else {
-        // Fallback for offline/preview environments
-        setTempToken('preview-temp-token');
-        setStep('totp');
-      }
+      setError(err.message || 'Network error: failed to connect to portal service');
     } finally {
       setLoading(false);
     }
@@ -80,18 +83,9 @@ export function App() {
       }
       setIsAuthenticated(true);
       setCurrentUser(data.user || { email, role: 'admin', name: 'Operations Team' });
+      setToken(data.accessToken || '');
     } catch (err) {
-      if (err.message && !err.message.includes('fetch') && !err.message.includes('Failed')) {
-        setError(err.message);
-      } else {
-        // Fallback for offline/preview environments
-        setIsAuthenticated(true);
-        setCurrentUser({
-          email,
-          role: 'admin',
-          name: 'Care Agent Admin',
-        });
-      }
+      setError(err.message || 'Network error: failed to verify authenticator code');
     } finally {
       setLoading(false);
     }
@@ -104,8 +98,11 @@ export function App() {
     setPassword('');
     setTotpCode('');
     setTempToken('');
+    setToken('');
     setCurrentUser(null);
     setError('');
+    setActiveNav('disputes');
+    setSelectedDisputeId(null);
   };
 
   if (!isAuthenticated) {
@@ -233,6 +230,9 @@ export function App() {
         </div>
 
         <div className="flex items-center gap-3">
+          <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-200">
+            Demo money
+          </span>
           <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800">
             {currentUser?.email || 'Care Agent / Admin'} (2FA Verified)
           </span>
@@ -248,43 +248,112 @@ export function App() {
       </header>
 
       <div className="flex-1 max-w-7xl w-full mx-auto p-6 grid grid-cols-1 md:grid-cols-4 gap-6">
-        <aside className="bg-white rounded-lg p-4 border border-slate-200 shadow-sm space-y-2">
+        <aside className="bg-white rounded-lg p-4 border border-slate-200 shadow-sm space-y-2 h-fit">
           <button
             type="button"
-            className="w-full flex items-center gap-3 px-3 py-2 rounded text-sm font-medium text-teal-700 bg-teal-50"
+            onClick={() => {
+              setActiveNav('disputes');
+              setSelectedDisputeId(null);
+            }}
+            className={`w-full flex items-center gap-3 px-3 py-2 rounded text-sm font-medium transition ${
+              activeNav === 'disputes'
+                ? 'text-teal-700 bg-teal-50'
+                : 'text-slate-600 hover:bg-slate-50'
+            }`}
           >
             <Scale className="w-4 h-4" />
             <span>Disputes Queue</span>
           </button>
           <button
             type="button"
-            className="w-full flex items-center gap-3 px-3 py-2 rounded text-sm font-medium text-slate-600 hover:bg-slate-50"
+            onClick={() => {
+              setActiveNav('moderation');
+              setSelectedDisputeId(null);
+            }}
+            className={`w-full flex items-center gap-3 px-3 py-2 rounded text-sm font-medium transition ${
+              activeNav === 'moderation'
+                ? 'text-teal-700 bg-teal-50'
+                : 'text-slate-600 hover:bg-slate-50'
+            }`}
           >
             <ShieldAlert className="w-4 h-4" />
-            <span>Reports</span>
+            <span>Reports & Moderation</span>
           </button>
           <button
             type="button"
-            className="w-full flex items-center gap-3 px-3 py-2 rounded text-sm font-medium text-slate-600 hover:bg-slate-50"
+            onClick={() => {
+              setActiveNav('users');
+              setSelectedDisputeId(null);
+            }}
+            className={`w-full flex items-center gap-3 px-3 py-2 rounded text-sm font-medium transition ${
+              activeNav === 'users'
+                ? 'text-teal-700 bg-teal-50'
+                : 'text-slate-600 hover:bg-slate-50'
+            }`}
           >
             <Users className="w-4 h-4" />
             <span>User Lookup</span>
           </button>
           <button
             type="button"
-            className="w-full flex items-center gap-3 px-3 py-2 rounded text-sm font-medium text-slate-600 hover:bg-slate-50"
+            onClick={() => {
+              setActiveNav('settings');
+              setSelectedDisputeId(null);
+            }}
+            className={`w-full flex items-center gap-3 px-3 py-2 rounded text-sm font-medium transition ${
+              activeNav === 'settings'
+                ? 'text-teal-700 bg-teal-50'
+                : 'text-slate-600 hover:bg-slate-50'
+            }`}
           >
             <Settings className="w-4 h-4" />
-            <span>Admin Settings</span>
+            <span>System Status</span>
           </button>
         </aside>
 
-        <main className="md:col-span-3 bg-white rounded-lg p-6 border border-slate-200 shadow-sm">
-          <h2 className="text-lg font-semibold text-slate-900 mb-2">Operations Dashboard</h2>
-          <p className="text-sm text-slate-600">
-            Care portal initialized for Phase 0. Case management and decision tools will be active
-            upon completion of Phase 8.
-          </p>
+        <main className="md:col-span-3">
+          {activeNav === 'disputes' && (
+            <>
+              {selectedDisputeId ? (
+                <CaseFileView
+                  disputeId={selectedDisputeId}
+                  token={token}
+                  currentUser={currentUser}
+                  onBack={() => setSelectedDisputeId(null)}
+                />
+              ) : (
+                <DisputeQueue token={token} onSelectDispute={(id) => setSelectedDisputeId(id)} />
+              )}
+            </>
+          )}
+
+          {activeNav === 'moderation' && <ModerationQueue token={token} />}
+
+          {activeNav === 'users' && <UserLookup token={token} />}
+
+          {activeNav === 'settings' && (
+            <div className="bg-white rounded-lg p-6 border border-slate-200 shadow-sm space-y-4">
+              <h2 className="text-lg font-bold text-slate-900">System Operations & Status</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                <div className="p-3 bg-slate-50 rounded border border-slate-200 space-y-1">
+                  <span className="font-semibold text-slate-700">Environment</span>
+                  <p className="text-slate-900 font-mono">BorrowLoop v0.1.0 • Phase 8 Active</p>
+                </div>
+                <div className="p-3 bg-slate-50 rounded border border-slate-200 space-y-1">
+                  <span className="font-semibold text-slate-700">Audit Trail Enforcement</span>
+                  <p className="text-emerald-700 font-bold">Enabled (writeAuditLogTx Strict)</p>
+                </div>
+                <div className="p-3 bg-slate-50 rounded border border-slate-200 space-y-1">
+                  <span className="font-semibold text-slate-700">Ledger Monetary Integrity</span>
+                  <p className="text-emerald-700 font-bold">Double-Entry Zero-Sum Guarded</p>
+                </div>
+                <div className="p-3 bg-slate-50 rounded border border-slate-200 space-y-1">
+                  <span className="font-semibold text-slate-700">Security & Privacy Mode</span>
+                  <p className="text-slate-900 font-mono">Masked Emails • No Coordinates Logged</p>
+                </div>
+              </div>
+            </div>
+          )}
         </main>
       </div>
     </div>

@@ -24,6 +24,11 @@ import itemRouter from './modules/items/itemRoutes.js';
 import walletRouter from './modules/wallet/walletRoutes.js';
 import bookingRouter from './modules/bookings/bookingRoutes.js';
 import notificationRouter from './modules/notifications/notificationRoutes.js';
+import disputeRouter from './modules/disputes/disputeRoutes.js';
+import careDisputeRouter from './modules/disputes/careDisputeRoutes.js';
+import reportRouter from './modules/reports/reportRoutes.js';
+import careReportRouter from './modules/reports/careReportRoutes.js';
+import careUserRouter from './modules/care/careUserRoutes.js';
 
 export function createApp() {
   const app = express();
@@ -96,6 +101,11 @@ export function createApp() {
   app.use('/v1/wallet', walletRouter);
   app.use('/v1/bookings', bookingRouter);
   app.use('/v1/notifications', notificationRouter);
+  app.use('/v1/disputes', disputeRouter);
+  app.use('/v1/care/disputes', careDisputeRouter);
+  app.use('/v1/reports', reportRouter);
+  app.use('/v1/care/reports', careReportRouter);
+  app.use('/v1/care/users', careUserRouter);
 
   // 404 handler
   app.use((req, _res, next) => {

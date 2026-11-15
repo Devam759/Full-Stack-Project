@@ -81,6 +81,29 @@ A "lost dispute" means a care agent ruled against the user's conduct.
 - The creator is the owner. Owners may remove members from their own community.
 - Only the admin may suspend or delete a community.
 
+## Disputes and Case Decisions (Phase 8)
+
+- Dispute reasons: `damage`, `not_returned`, `condition_mismatch`, `no_show`.
+- Opening rules:
+  - `damage`: Opened by lender choosing "Report a problem" upon return scan.
+  - `not_returned`: Opened automatically by background worker after 3 full days overdue (`now >= dueAt + 3 days`), freezing borrower account.
+  - `condition_mismatch`: Opened by borrower while booking is `picked_up` and `now <= dueAt`. Freezes final late charges.
+  - `no_show`: Opened by either borrower or lender while booking is `accepted`, from start date until pickup deadline.
+  - Strictly one dispute per booking.
+- Late charge in decision:
+  - If `applyLateCharge` is true (default), the accrued late charge on booking (`lateChargePaise`) is paid to lender with 15% platform commission.
+  - Remaining deposit is split by agent: `depositToLenderPaise + depositToBorrowerPaise === depositPaise - appliedLateChargePaise`.
+  - Deposit compensation to lender has 0% platform commission.
+- Rent outcome: `lender` (lender earns rent minus 15% commission) or `refund_borrower` (full rent refunded to borrower).
+- No-show resolution: Force-cancels booking (`cancelled`); 100% of deposit and rent returned to borrower.
+- Penalties per case:
+  - `lost_dispute`: -10 trust score and one strike.
+  - `rejected_damage_claim`: -5 trust score to lender, zero strikes.
+  - `no_show`: -5 trust score, zero strikes.
+  - `none`: No trust penalty or strike.
+- Care authority: Care agents cannot ban. Permitted actions: `dismiss`, `hide_item`, `remove_item`, `restore_item`, `warn_user`, `strike_user`. Permanent ban/unban is admin only (Phase 9).
+- Appeals: One appeal per dispute submitted by either participant within `APPEAL_WINDOW_DAYS` (7 days) of decision. Settlement remains in force until Phase 9 admin review.
+
 ## Moderation
 
 - Three reports from different users hide an item until reviewed.

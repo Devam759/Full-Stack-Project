@@ -93,6 +93,10 @@ Each module has routes, controller, service, repository and tests. Controllers h
 | Accrue late charges & open disputes  | `ACCRUE_LATE_CHARGES_MINUTES`                            | Hourly                | Absolute daily calculation, settle-once guard        | Active |
 | Auto-complete returns after 24 hours | `AUTO_COMPLETE_RETURNS_MINUTES`                          | Every 15 minutes      | Settle-once `LedgerOperation`, state machine guard   | Active |
 | Reveal ratings after 7 days          | `REVEAL_RATINGS_HOURS`                                   | Daily                 | Timestamp threshold guard, idempotent recomputation  | Active |
+| Close decided disputes past window   | `CLOSE_DISPUTES_MINUTES`                                 | Hourly                | Atomic conditional update, appeal window guard       | Active |
+| Escalate unassigned disputes         | `ESCALATE_DISPUTES_MINUTES`                              | Hourly                | Atomic single notification, dedupeKey guard          | Active |
+| Close decided disputes past window   | `CLOSE_DISPUTES_MINUTES`                                 | Hourly                | Atomic conditional update, appeal window guard       | Active |
+| Escalate unassigned disputes         | `ESCALATE_DISPUTES_MINUTES`                              | Hourly                | Atomic single notification, dedupeKey guard          | Active |
 | Ledger reconciliation                | `LEDGER_RECONCILIATION_CRON`                             | Nightly (`0 2 * * *`) | Redis distributed lock, snapshot-read transaction    | Active |
 | Outbox dispatcher                    | `OUTBOX_DISPATCHER_SECONDS`                              | Every 10 seconds      | Atomic `findOneAndUpdate` claim, 5 min lease         | Active |
 | Email sending                        | Worker BullMQ queue `email_queue`                        | On demand             | BullMQ custom `jobId: email_${dedupeKey}`            | Active |

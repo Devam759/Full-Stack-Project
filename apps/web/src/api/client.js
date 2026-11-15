@@ -74,4 +74,21 @@ export async function apiRequest(endpoint, options = {}) {
   return data;
 }
 
+apiRequest.get = (endpoint, options = {}) => apiRequest(endpoint, { ...options, method: 'GET' });
+apiRequest.post = (endpoint, body, options = {}) =>
+  apiRequest(endpoint, {
+    ...options,
+    method: 'POST',
+    body: body !== undefined ? (typeof body === 'string' ? body : JSON.stringify(body)) : undefined,
+  });
+apiRequest.patch = (endpoint, body, options = {}) =>
+  apiRequest(endpoint, {
+    ...options,
+    method: 'PATCH',
+    body: body !== undefined ? (typeof body === 'string' ? body : JSON.stringify(body)) : undefined,
+  });
+apiRequest.delete = (endpoint, options = {}) =>
+  apiRequest(endpoint, { ...options, method: 'DELETE' });
+
+export const api = apiRequest;
 export default apiRequest;

@@ -6,6 +6,11 @@ import {
   geoPointSchema,
   idempotencyKeySchema,
   createItemSchema,
+  createDisputeSchema,
+  disputeDecisionSchema,
+  disputeAppealSchema,
+  createReportSchema,
+  careReportActionSchema,
 } from '../src/schemas/index.js';
 
 describe('packages/shared/schemas', () => {
@@ -91,5 +96,93 @@ describe('packages/shared/schemas', () => {
       depositPaise: 1000_00, // 50,000 + 1,000 = 51,000 > 50,000
     };
     expect(createItemSchema.safeParse(overCap).success).toBe(false);
+  });
+
+  it('validates dispute schemas (create, decision, appeal)', () => {
+    // Valid create dispute
+    const validDispute = {
+      reason: 'condition_mismatch',
+      details: 'The item received has heavy damage not shown in photos.',
+      photos: [{ publicId: 'borrowloop/disputes/b123/p1', url: 'https://example.com/p1.jpg' }],
+    };
+    expect(createDisputeSchema.safeParse(validDispute).success).toBe(true);
+
+    // Invalid reason ('other' is rejected; only 'condition_mismatch' and 'no_show' allowed)
+    expect(createDisputeSchema.safeParse({ ...validDispute, reason: 'other' }).success).toBe(false);
+    expect(createDisputeSchema.safeParse({ ...validDispute, details: 'Too short' }).success).toBe(
+      false,
+    );
+
+    // Valid dispute decision
+    const validDecision = {
+      depositToLenderPaise: 500_00,
+      depositToBorrowerPaise: 500_00,
+      applyLateCharge: true,
+      rentOutcome: 'lender',
+      penaltyKind: 'lost_dispute',
+      faultUserId: '507f1f77bcf86cd799439011',
+      note: 'Deposit split 50/50 due to minor damage incurred during borrow.',
+    };
+    expect(disputeDecisionSchema.safeParse(validDecision).success).toBe(true);
+
+    // Invalid decision note (<20 chars)
+    expect(disputeDecisionSchema.safeParse({ ...validDecision, note: 'Short note' }).success).toBe(
+      false,
+    );
+
+    // Valid appeal
+    expect(
+      disputeAppealSchema.safeParse({
+        reason: 'The item had pre-existing scratches documented on pickup.',
+      }).success,
+    ).toBe(true);
+    expect(disputeAppealSchema.safeParse({ reason: 'Short' }).success).toBe(false);
+  });
+
+  it('validates report schemas (targetType, reason, and care actions)', () => {
+    // Item report
+    const validItemReport = {
+      targetType: 'item',
+      targetId: '507f1f77bcf86cd799439011',
+      reason: 'prohibited_item',
+      details: 'Selling prohibited weapons',
+    };
+    expect(createReportSchema.safeParse(validItemReport).success).toBe(true);
+
+    // Invalid reason for item (harassment is user/message reason)
+    const invalidItemReport = { ...validItemReport, reason: 'harassment' };
+    expect(createReportSchema.safeParse(invalidItemReport).success).toBe(false);
+
+    // User report
+    const validUserReport = {
+      targetType: 'user',
+      targetId: '507f1f77bcf86cd799439012',
+      reason: 'fraud',
+      details: 'Suspected fraudulent profile',
+    };
+    expect(createReportSchema.safeParse(validUserReport).success).toBe(true);
+
+    // Message report
+    const validMsgReport = {
+      targetType: 'message',
+      targetId: '507f1f77bcf86cd799439013',
+      reason: 'threat',
+      details: 'Explicit threat in chat',
+    };
+    expect(createReportSchema.safeParse(validMsgReport).success).toBe(true);
+
+    // Care action
+    expect(
+      careReportActionSchema.safeParse({
+        action: 'hide_item',
+        note: 'Item hidden due to prohibited category',
+      }).success,
+    ).toBe(true);
+    expect(
+      careReportActionSchema.safeParse({
+        action: 'ban_user', // ban_user not permitted for care agents
+        note: 'Banning user',
+      }).success,
+    ).toBe(false);
   });
 });

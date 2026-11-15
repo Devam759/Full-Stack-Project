@@ -12,8 +12,8 @@ Build one phase at a time. Each phase ends with working, tested features on the 
 | 5     | Booking lifecycle, locks, accept and reject, cancel, expiry, extension   | Full state machine tested                      | Completed |
 | 6     | Chat, map pin, real-time notifications, email, background jobs           | Messages and alerts arrive on two instances    | Completed |
 | 7     | QR handover and return, photos, ratings, trust score, strikes            | Complete borrow works end to end               | Completed |
-| 8     | Disputes, care portal, reports, moderation                               | Agent decides a case and money moves correctly | Next up   |
-| 9     | Admin portal, analytics, audit log, ads placeholders and consent         | Admin sees live numbers                        | Planned   |
+| 8     | Disputes, care portal, reports, moderation                               | Agent decides a case and money moves correctly | Completed |
+| 9     | Admin portal, analytics, audit log, ads placeholders and consent         | Admin sees live numbers                        | Next up   |
 | 10    | PWA, polish, accessibility, seed data, load test, API docs, deployment   | Public URL, load test results documented       | Planned   |
 
 ## Team of three (suggested split)
@@ -70,3 +70,45 @@ Build one phase at a time. Each phase ends with working, tested features on the 
 - **7h: Multi-Party E2E Tests & Audit**:
   - Multi-party E2E test suite (`apps/api/tests/phase7E2E.test.js`) verifying happy path, damage dispute, not-returned dispute, and ledger invariants.
   - Invariants audit (`scripts/run-invariants-audit.js`) verified 13/13 categories satisfied with 0 mismatches.
+
+---
+
+## Phase 8 Deliverables Summary (Completed)
+
+- **8a: Contracts, State Machine & Foundations**:
+  - Centralized dispute and report constants in `BUSINESS_CONFIG` (`DISPUTES.REASONS`, `DISPUTES.STATUSES`, `DISPUTES.APPEAL_WINDOW_DAYS: 7`, `REPORTS.CARE_ACTIONS`, single `ITEM_REPORTS_HIDE_THRESHOLD: 3`).
+  - Added ledger entry types (`dispute_settlement`, `deposit_compensation`, `dispute_refund`) and notification types.
+  - Booking state machine transitions: `OPEN_CONDITION_DISPUTE` (picked_up -> disputed, borrower only), `OPEN_NO_SHOW_DISPUTE` (accepted -> disputed, borrower/lender), `RESOLVE_DISPUTE` (disputed -> completed, care/admin), `RESOLVE_NO_SHOW_DISPUTE` (disputed -> cancelled, care/admin).
+  - Transactional audit log writer `writeAuditLogTx(entry, { session })` guaranteeing all money decisions write an immutable audit log inside the caller's transaction.
+  - Idempotent `strikeService.applyStrike` with explicit `eventKey` deduplication, and fixed `reverseStrike` to prevent un-freezing frozen accounts.
+  - Removed offline/mock login bypass in `apps/portal/src/App.jsx`.
+- **8b: Dispute Model & User Dispute Lifecycle**:
+  - `Dispute.js` Mongoose model with unique `bookingId`, indexes on status/createdAt, evidence history, structured decision metadata, and appeal fields.
+  - Outbox consumer handling `dispute.requested` idempotently with handover photo attachment and email/in-app notifications.
+  - Backfill migration script `scripts/backfill-disputes.js`.
+  - User endpoints: `POST /v1/bookings/:id/disputes` with Idempotency-Key, `POST /v1/disputes/:id/evidence` with signed Cloudinary uploads and photo cap enforcement, `GET /v1/disputes/:id` and `GET /v1/bookings/:id/dispute`.
+- **8c: Atomic Dispute Settlement**:
+  - `settleDisputeDecision` in `ledgerService.js` guarded with settle-once `LedgerOperation` (`operationType: 'dispute_settlement'`).
+  - Zero-sum double-entry ledger guarantee across `lender_escrow`, `borrower_escrow`, `platform_revenue`, `lender_balance`, `borrower_balance`, and `dispute_reserve`.
+  - Precise business math: 15% platform commission on late charges and rent, 0% commission on deposit compensation to lender.
+- **8d: Care Portal API & Dispute Jobs**:
+  - Staff routes protected by `authenticate(TOKEN_AUDIENCES.PORTAL)` and `requireRole('care_agent', 'admin')`.
+  - `GET /v1/care/disputes` with status filtering and cursor pagination; `GET /v1/care/disputes/:id` with complete case file; `POST /v1/care/disputes/:id/assign` with conflict-of-interest check; `POST /v1/care/disputes/:id/decision` executing atomic settlement, trust penalties, and transactional audit logging.
+  - User appeal route: `POST /v1/disputes/:id/appeal` validating the 7-day appeal window.
+  - Worker jobs: `escalateDisputesJob` (flags unassigned disputes >24h) and `closeDisputesJob` (closes decided disputes after 7 days if no appeal).
+- **8e: Reports & Content Moderation**:
+  - `Report.js` model with unique compound index `(reporterUserId, targetType, targetId)`.
+  - `POST /v1/reports` with target validation, rate limiting (10/hour), and automatic item hiding at 3 reports (`item_auto_hidden` domain event and notification).
+  - Care moderation endpoints: `GET /v1/care/reports` with cursor pagination, `POST /v1/care/reports/:id/action` supporting `dismiss`, `hide_item`, `remove_item`, `restore_item`, `warn_user`, `strike_user`.
+  - `GET /v1/care/users/:id` providing care agents full trust event history, active bookings, strike counts, and audit logs.
+- **8f: Care Portal Frontend**:
+  - Portal UI in `apps/portal/src/components/`: `DisputeQueue.jsx`, `CaseFileView.jsx`, `ModerationQueue.jsx`, `UserLookup.jsx`.
+  - Live split computation, internal notes, Demo money visual cues, and zero mock auth fallbacks.
+- **8g: User Web App Integration**:
+  - `ReportModal.jsx` (item, user, message reporting with config reasons).
+  - `OpenDisputeModal.jsx` (condition mismatch & no-show with signed dispute uploads).
+  - `DisputeDetailScreen.jsx` (dispute timeline, evidence gallery, add evidence, decision finding banner, Demo money labels, 7-day appeal submission).
+  - Embedded report buttons in `BookingDetailScreen.jsx`, `ItemDetailScreen.jsx`, and `ChatPanel.jsx`.
+- **8h: Verification & Multi-Subsystem Audit**:
+  - Invariants audit (`scripts/run-invariants-audit.js`) verified all 13 categories satisfied (zero paise imbalance, zero negative balances, zero duplicate refunds, zero orphaned locks, zero stuck events).
+  - Monorepo linting (`npm run lint`) and code formatting (`npm run format:check`) 100% clean.

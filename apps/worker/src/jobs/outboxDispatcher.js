@@ -10,6 +10,9 @@ import {
   DomainEvent,
   Notification,
   User,
+  Booking,
+  Dispute,
+  Handover,
   runWithRedisLock,
   recordTrustEvent,
   recompute,
@@ -49,11 +52,14 @@ export const HANDLED_EVENT_TYPES = new Set([
   'booking.extension_expired',
   'booking.auto_rejected_overlapping',
   'reconciliation.mismatch',
+  'dispute.requested',
+  'dispute.opened',
 ]);
 
 export const NO_NOTIFICATION_EVENT_TYPES = new Set(['trust_score.penalty', 'trust_score.reward']);
 
 function getEmailQueue(redisClient) {
+  if (!redisClient) return null;
   if (!emailQueue) {
     emailQueue = new Queue(EMAIL_QUEUE_NAME, {
       connection: redisClient.duplicate({ maxRetriesPerRequest: null }),
@@ -146,7 +152,7 @@ async function dispatchSingleEvent(event, redisClient, userCache = null) {
 
   // Helper to enqueue email with deterministic jobId
   const queueEmail = async ({ to, subject, text, html, dedupeKey }) => {
-    if (!to) return;
+    if (!to || !eq) return;
     try {
       const safeJobId = `email_${dedupeKey.replace(/:/g, '_')}`;
       await eq.add('send_email', { to, subject, text, html }, { jobId: safeJobId });
@@ -535,6 +541,146 @@ async function dispatchSingleEvent(event, redisClient, userCache = null) {
         });
 
         await recompute(userId);
+      }
+      break;
+    }
+
+    case 'dispute.requested': {
+      const booking = await Booking.findById(bookingId).lean();
+      if (!booking) break;
+
+      const reason = payload.disputeReason || booking.disputeReason || 'damage';
+      const isSystem = payload.openedBy === 'system';
+      const openedById = isSystem ? null : payload.reportedBy || booking.lenderId;
+      const againstUserId = isSystem
+        ? booking.borrowerId
+        : openedById?.toString() === booking.borrowerId?.toString()
+          ? booking.lenderId
+          : booking.borrowerId;
+
+      let initialPhotos = [];
+      try {
+        const handovers = await Handover.find({ bookingId }).lean();
+        if (handovers && handovers.length > 0) {
+          for (const h of handovers) {
+            if (h.photos && Array.isArray(h.photos)) {
+              for (const p of h.photos) {
+                if (p.url) {
+                  initialPhotos.push({
+                    publicId: p.publicId || '',
+                    url: p.url,
+                  });
+                }
+              }
+            }
+          }
+        }
+      } catch (err) {
+        logger.warn({ err: err.message }, 'Failed to fetch handovers for dispute evidence');
+      }
+
+      let dispute = await Dispute.findOne({ bookingId });
+      if (!dispute) {
+        try {
+          dispute = await Dispute.create({
+            bookingId: booking._id,
+            disputeReason: reason,
+            source: isSystem ? 'system' : 'user',
+            openedById: openedById || null,
+            againstUserId,
+            status: 'opened',
+            statusHistory: [
+              {
+                status: 'opened',
+                changedBy: openedById || null,
+                note:
+                  payload.note || (isSystem ? 'Automated overdue dispute' : 'Dispute requested'),
+                changedAt: event.createdAt || new Date(),
+              },
+            ],
+            evidence: [
+              {
+                by: openedById || againstUserId,
+                notes:
+                  payload.note ||
+                  (isSystem
+                    ? 'Item overdue by 3+ days with no return'
+                    : 'Reported problem at return'),
+                photos: initialPhotos.slice(
+                  0,
+                  BUSINESS_CONFIG.DISPUTES.MAX_EVIDENCE_PHOTOS_PER_ENTRY || 6,
+                ),
+                createdAt: event.createdAt || new Date(),
+              },
+            ],
+          });
+        } catch (createErr) {
+          if (createErr.code === 11000) {
+            dispute = await Dispute.findOne({ bookingId });
+          } else {
+            throw createErr;
+          }
+        }
+      }
+
+      const borrowerIdStr = booking.borrowerId?.toString();
+      const lenderIdStr = booking.lenderId?.toString();
+
+      if (borrowerIdStr) {
+        const dedupeKey = `notif:dispute_opened:${bookingId}:${borrowerIdStr}`;
+        await createNotif({
+          userId: borrowerIdStr,
+          notifType: 'dispute_opened',
+          title: 'Dispute opened for your booking',
+          body: `A dispute has been opened regarding booking #${bookingId.toString().slice(-6)}. A Care Agent will review the case.`,
+          link: `/bookings/${bookingId}`,
+          dedupeKey,
+        });
+      }
+
+      if (lenderIdStr) {
+        const dedupeKey = `notif:dispute_opened:${bookingId}:${lenderIdStr}`;
+        await createNotif({
+          userId: lenderIdStr,
+          notifType: 'dispute_opened',
+          title: 'Dispute opened for your booking',
+          body: `A dispute has been opened regarding booking #${bookingId.toString().slice(-6)}. A Care Agent will review the case.`,
+          link: `/bookings/${bookingId}`,
+          dedupeKey,
+        });
+      }
+      break;
+    }
+
+    case 'dispute.opened': {
+      const booking = await Booking.findById(bookingId).lean();
+      if (!booking) break;
+
+      const borrowerIdStr = booking.borrowerId?.toString();
+      const lenderIdStr = booking.lenderId?.toString();
+
+      if (borrowerIdStr) {
+        const dedupeKey = `notif:dispute_opened:${bookingId}:${borrowerIdStr}`;
+        await createNotif({
+          userId: borrowerIdStr,
+          notifType: 'dispute_opened',
+          title: 'Dispute opened for your booking',
+          body: `A dispute has been opened for booking #${bookingId.toString().slice(-6)}.`,
+          link: `/bookings/${bookingId}`,
+          dedupeKey,
+        });
+      }
+
+      if (lenderIdStr) {
+        const dedupeKey = `notif:dispute_opened:${bookingId}:${lenderIdStr}`;
+        await createNotif({
+          userId: lenderIdStr,
+          notifType: 'dispute_opened',
+          title: 'Dispute opened for your booking',
+          body: `A dispute has been opened for booking #${bookingId.toString().slice(-6)}.`,
+          link: `/bookings/${bookingId}`,
+          dedupeKey,
+        });
       }
       break;
     }

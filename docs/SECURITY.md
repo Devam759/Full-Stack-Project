@@ -13,6 +13,13 @@
 
 - Check role and ownership on every endpoint, not only in the interface.
 - Users see only their own bookings, chats, wallet and disputes. Care agents see only the cases they open. Every care or admin read of a case is logged.
+- **Care Portal Access & Fail-Closed Auditing (Phase 8)**:
+  - Staff routes enforce `authenticate(TOKEN_AUDIENCES.PORTAL)` and `requireRole('care_agent', 'admin')`. User tokens with audience `borrowloop:user` are rejected with 401/403.
+  - Conflict of interest: An agent or admin who is a counterparty (borrower or lender) in a booking cannot view, assign, or decide the dispute (`CONFLICT_OF_INTEREST`).
+  - Every care endpoint (including case reads, dispute queue views, user lookups, and report actions) writes an `AuditLog` record and fails closed: if the audit entry fails to write, the request is aborted.
+  - Money decisions run `writeAuditLogTx` inside the MongoDB transaction alongside ledger operations, ensuring no monetary settlement commits without an audit record.
+  - Privacy and sanitization: Responses and audit records never log or expose raw passwords, TOTP secrets, full email addresses, or exact GPS coordinates.
+  - Care agents cannot ban users; ban and unban actions remain strictly restricted to administrators.
 
 ## Real-time & WebSocket Authorisation Rules
 

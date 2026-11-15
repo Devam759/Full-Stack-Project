@@ -7,7 +7,13 @@
 import { Queue, Worker } from 'bullmq';
 import { startOutboxDispatcher } from './outboxDispatcher.js';
 import { sendPickupReminders, sendDueReminders } from './reminderJobs.js';
-import { accrueLateChargesJob, autoCompleteReturnsJob, revealRatingsJob } from './deferredJobs.js';
+import {
+  accrueLateChargesJob,
+  autoCompleteReturnsJob,
+  revealRatingsJob,
+  closeDisputesJob,
+  escalateDisputesJob,
+} from './deferredJobs.js';
 import { runWithRedisLock } from '@borrowloop/server-core';
 import { BUSINESS_CONFIG } from '@borrowloop/shared';
 import logger from '../logger.js';
@@ -24,6 +30,8 @@ const ACTIVE_JOB_IDS = new Set([
   'job:accrue_late_charges',
   'job:auto_complete_returns',
   'job:reveal_ratings',
+  'job:close_disputes',
+  'job:escalate_disputes',
 ]);
 
 /**
@@ -130,6 +138,28 @@ export async function startScheduler(redisClient) {
     },
   );
 
+  await schedulerQueue.add(
+    'close_disputes',
+    { scheduledAt: new Date().toISOString() },
+    {
+      jobId: 'job:close_disputes',
+      repeat: { every: (bgJobs.CLOSE_DISPUTES_MINUTES || 60) * 60 * 1000 },
+      removeOnComplete: true,
+      removeOnFail: 10,
+    },
+  );
+
+  await schedulerQueue.add(
+    'escalate_disputes',
+    { scheduledAt: new Date().toISOString() },
+    {
+      jobId: 'job:escalate_disputes',
+      repeat: { every: (bgJobs.ESCALATE_DISPUTES_MINUTES || 60) * 60 * 1000 },
+      removeOnComplete: true,
+      removeOnFail: 10,
+    },
+  );
+
   // Start BullMQ Worker processing repeatable scheduler jobs
   schedulerWorker = new Worker(
     SCHEDULER_QUEUE_NAME,
@@ -169,6 +199,20 @@ export async function startScheduler(redisClient) {
             name: 'reveal_ratings',
             redisClient,
             handler: () => revealRatingsJob({ redisClient }),
+            logger,
+          });
+        case 'close_disputes':
+          return runWithRedisLock({
+            name: 'close_disputes',
+            redisClient,
+            handler: () => closeDisputesJob({ redisClient }),
+            logger,
+          });
+        case 'escalate_disputes':
+          return runWithRedisLock({
+            name: 'escalate_disputes',
+            redisClient,
+            handler: () => escalateDisputesJob({ redisClient }),
             logger,
           });
         default:

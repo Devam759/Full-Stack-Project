@@ -5,10 +5,11 @@
  */
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Send, MapPin, Check, CheckCheck, MapPinned } from 'lucide-react';
+import { Send, MapPin, Check, CheckCheck, MapPinned, Flag } from 'lucide-react';
 import { apiRequest } from '../api/client.js';
 import { useSocket } from '../context/SocketContext.jsx';
 import { MapPinPicker } from './MapPinPicker.jsx';
+import ReportModal from './ReportModal.jsx';
 
 const TERMINAL_STATUSES = ['completed', 'cancelled', 'expired'];
 
@@ -21,6 +22,7 @@ export function ChatPanel({ bookingId, currentUserId, bookingStatus }) {
   const [sending, setSending] = useState(false);
   const [showPinPicker, setShowPinPicker] = useState(false);
   const [error, setError] = useState('');
+  const [reportMessage, setReportMessage] = useState(null);
   const [hasOlder, setHasOlder] = useState(false);
   const [loadingOlder, setLoadingOlder] = useState(false);
   const oldestCursorRef = useRef(null);
@@ -376,32 +378,47 @@ export function ChatPanel({ bookingId, currentUserId, bookingStatus }) {
 
             // Normal text message
             return (
-              <div key={m.id} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
-                <div
-                  className={`max-w-xs sm:max-w-md rounded-2xl px-4 py-2 text-xs leading-relaxed shadow-xs ${
-                    isMe
-                      ? 'bg-brand-600 text-white rounded-br-xs'
-                      : 'bg-white border border-slate-200 text-slate-800 rounded-bl-xs'
-                  }`}
-                >
-                  <p className="whitespace-pre-wrap break-words">{m.text}</p>
+              <div
+                key={m.id}
+                className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} group`}
+              >
+                <div className="flex items-center gap-1">
+                  {!isMe && (
+                    <button
+                      type="button"
+                      title="Report message"
+                      onClick={() => setReportMessage(m)}
+                      className="opacity-0 group-hover:opacity-100 p-1 text-slate-300 hover:text-rose-500 transition"
+                    >
+                      <Flag className="w-3 h-3" />
+                    </button>
+                  )}
                   <div
-                    className={`flex items-center justify-end gap-1 mt-1 text-[9px] ${
-                      isMe ? 'text-brand-100' : 'text-slate-400'
+                    className={`max-w-xs sm:max-w-md rounded-2xl px-4 py-2 text-xs leading-relaxed shadow-xs ${
+                      isMe
+                        ? 'bg-brand-600 text-white rounded-br-xs'
+                        : 'bg-white border border-slate-200 text-slate-800 rounded-bl-xs'
                     }`}
                   >
-                    <span>
-                      {new Date(m.createdAt).toLocaleTimeString([], {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
-                    </span>
-                    {isMe &&
-                      (isRead ? (
-                        <CheckCheck className="w-3 h-3 text-white" />
-                      ) : (
-                        <Check className="w-3 h-3 text-brand-200" />
-                      ))}
+                    <p className="whitespace-pre-wrap break-words">{m.text}</p>
+                    <div
+                      className={`flex items-center justify-end gap-1 mt-1 text-[9px] ${
+                        isMe ? 'text-brand-100' : 'text-slate-400'
+                      }`}
+                    >
+                      <span>
+                        {new Date(m.createdAt).toLocaleTimeString([], {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </span>
+                      {isMe &&
+                        (isRead ? (
+                          <CheckCheck className="w-3 h-3 text-white" />
+                        ) : (
+                          <Check className="w-3 h-3 text-brand-200" />
+                        ))}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -473,6 +490,15 @@ export function ChatPanel({ bookingId, currentUserId, bookingStatus }) {
       {showPinPicker && (
         <MapPinPicker onSelectPin={handleSendPin} onCancel={() => setShowPinPicker(false)} />
       )}
+
+      {/* Report Chat Message Modal */}
+      <ReportModal
+        isOpen={Boolean(reportMessage)}
+        onClose={() => setReportMessage(null)}
+        targetType="message"
+        targetId={reportMessage?.id || reportMessage?._id}
+        targetTitle={reportMessage ? `Message: "${reportMessage.text?.substring(0, 30)}..."` : ''}
+      />
     </div>
   );
 }

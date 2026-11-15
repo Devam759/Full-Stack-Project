@@ -16,11 +16,11 @@ Base URL: `https://api.<domain>/v1`. JSON only. Authentication uses `Authorizati
 
 ### Error codes:
 
-- **400 Bad Request**: `VALIDATION_ERROR`, `BAD_REQUEST`, `INVALID_IDEMPOTENCY_KEY`, `QR_INVALID`, `QR_EXPIRED`, `HANDOVER_TOO_FAR`, `HANDOVER_CODE_INVALID`, `HANDOVER_PHOTO_WINDOW_CLOSED`, `HANDOVER_PHOTO_LIMIT`
+- **400 Bad Request**: `VALIDATION_ERROR`, `BAD_REQUEST`, `INVALID_IDEMPOTENCY_KEY`, `QR_INVALID`, `QR_EXPIRED`, `HANDOVER_TOO_FAR`, `HANDOVER_CODE_INVALID`, `HANDOVER_PHOTO_WINDOW_CLOSED`, `HANDOVER_PHOTO_LIMIT`, `DISPUTE_DECISION_INVALID`, `APPEAL_WINDOW_CLOSED`
 - **401 Unauthorized**: `UNAUTHORIZED`, `INVALID_CREDENTIALS`, `TOKEN_EXPIRED`, `TOKEN_REVOKED`, `TOTP_REQUIRED`, `INVALID_TOTP`
-- **403 Forbidden**: `FORBIDDEN`, `EMAIL_NOT_VERIFIED`, `ACCOUNT_BANNED`, `ACCOUNT_FROZEN`, `ACCOUNT_SUSPENDED`, `HANDOVER_LOCKED`, `RATING_NOT_ALLOWED`, `UNDERAGE`
-- **404 Not Found**: `NOT_FOUND`, `USER_NOT_FOUND`, `ITEM_NOT_FOUND`, `COMMUNITY_NOT_FOUND`, `BOOKING_NOT_FOUND`
-- **409 Conflict**: `CONFLICT`, `BOOKING_DATES_TAKEN`, `INVALID_BOOKING_TRANSITION`, `INSUFFICIENT_FUNDS`, `WALLET_CAP_EXCEEDED`, `IDEMPOTENCY_KEY_REUSE`, `IDEMPOTENCY_IN_PROGRESS`, `OPERATION_ALREADY_APPLIED`, `QR_ALREADY_USED`, `RATING_ALREADY_SUBMITTED`
+- **403 Forbidden**: `FORBIDDEN`, `EMAIL_NOT_VERIFIED`, `ACCOUNT_BANNED`, `ACCOUNT_FROZEN`, `ACCOUNT_SUSPENDED`, `HANDOVER_LOCKED`, `RATING_NOT_ALLOWED`, `UNDERAGE`, `DISPUTE_NOT_ALLOWED`, `DISPUTE_NOT_ASSIGNED_TO_YOU`, `REPORT_NOT_ALLOWED`, `CONFLICT_OF_INTEREST`
+- **404 Not Found**: `NOT_FOUND`, `USER_NOT_FOUND`, `ITEM_NOT_FOUND`, `COMMUNITY_NOT_FOUND`, `BOOKING_NOT_FOUND`, `DISPUTE_NOT_FOUND`, `REPORT_NOT_FOUND`
+- **409 Conflict**: `CONFLICT`, `BOOKING_DATES_TAKEN`, `INVALID_BOOKING_TRANSITION`, `INSUFFICIENT_FUNDS`, `WALLET_CAP_EXCEEDED`, `IDEMPOTENCY_KEY_REUSE`, `IDEMPOTENCY_IN_PROGRESS`, `OPERATION_ALREADY_APPLIED`, `QR_ALREADY_USED`, `RATING_ALREADY_SUBMITTED`, `DISPUTE_ALREADY_EXISTS`, `DISPUTE_INVALID_STATE`, `DISPUTE_ALREADY_ASSIGNED`, `APPEAL_ALREADY_SUBMITTED`, `REPORT_ALREADY_FILED`
 - **429 Rate Limited**: `RATE_LIMITED`
 - **500 Server Error**: `INTERNAL_ERROR`, `LEDGER_INVARIANT_VIOLATION`
 
@@ -222,7 +222,7 @@ All mutating handover and return endpoints require authenticated user, verified 
 
 ## Reports and blocks
 
-- `POST /reports` targetType, targetId, reason, details
+- `POST /reports` targetType ('item'|'user'|'message'), targetId, reason, details. Idempotency-Key. Verified active users only. Automatically hides item on 3rd distinct pending reporter.
 
 ## Notifications
 
@@ -230,17 +230,21 @@ All mutating handover and return endpoints require authenticated user, verified 
 
 ## Disputes (users)
 
-- `POST /bookings/:id/disputes`
-- `GET /disputes/:id` (participants only)
-- `POST /disputes/:id/appeal`
+- `POST /bookings/:id/disputes` { reason: 'condition_mismatch'|'no_show', details, photos[] }. Idempotency-Key. Participants only.
+- `GET /disputes/:id` and `GET /bookings/:id/dispute` (participants only). Full case details, evidence, and public decision note.
+- `POST /disputes/:id/evidence` { notes, photos[] }. Participants only, allowed until decision.
+- `POST /disputes/:id/appeal` { reason }. One-time appeal within 7 days of decision. Idempotency-Key.
 
-## Care portal (role care_agent or admin)
+## Care portal (authenticate TOKEN_AUDIENCES.PORTAL, role care_agent or admin)
 
-- `GET /care/disputes?status=`, `GET /care/disputes/:id` full case file
-- `POST /care/disputes/:id/assign`
-- `POST /care/disputes/:id/decision` depositToLenderPaise, depositToBorrowerPaise, rentOutcome, note
-- `GET /care/reports`, `POST /care/reports/:id/action`
-- `GET /care/users/:id` lookup with history
+- Every read and write endpoint writes an AuditLog row and fails closed.
+- `GET /care/disputes?status=&limit=&cursor=` paginated queue, oldest first, overdue indicator.
+- `GET /care/disputes/:id` full case file (timeline, photos, chat transcript, money summary, no raw emails/coordinates).
+- `POST /care/disputes/:id/assign` agent claims dispute.
+- `POST /care/disputes/:id/decision` { depositToLenderPaise, depositToBorrowerPaise, applyLateCharge, rentOutcome, faultUserId?, penaltyKind, borrowerAccountAction?, note, internalNote? }. Idempotency-Key.
+- `GET /care/reports?status=&targetType=&limit=&cursor=` moderation queue.
+- `POST /care/reports/:id/action` { action, note }. Actions: dismiss, hide_item, remove_item, restore_item, warn_user, strike_user. Idempotency-Key.
+- `GET /care/users/:id` and `GET /care/users?q=` user lookup with sanitized trust, strike, booking, and dispute history.
 
 ## Admin portal (role admin)
 

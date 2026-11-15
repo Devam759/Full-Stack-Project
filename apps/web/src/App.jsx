@@ -20,6 +20,7 @@ import { WalletScreen } from './screens/WalletScreen.jsx';
 import { BookingRequestScreen } from './screens/BookingRequestScreen.jsx';
 import { MyBookingsScreen } from './screens/MyBookingsScreen.jsx';
 import { BookingDetailScreen } from './screens/BookingDetailScreen.jsx';
+import { DisputeDetailScreen } from './screens/DisputeDetailScreen.jsx';
 import { ForgotPasswordScreen } from './screens/ForgotPasswordScreen.jsx';
 import { ResetPasswordScreen } from './screens/ResetPasswordScreen.jsx';
 
@@ -32,6 +33,10 @@ function MainAppShell() {
       if (path === '/forgot-password') return 'forgot-password';
       if (path === '/reset-password') return 'reset-password';
       if (path === '/notifications') return 'notifications';
+      const bookingDisputeMatch = path.match(/^\/bookings\/([a-zA-Z0-9_-]+)\/dispute$/);
+      if (bookingDisputeMatch) return 'dispute-detail';
+      const disputeMatch = path.match(/^\/disputes\/([a-zA-Z0-9_-]+)$/);
+      if (disputeMatch) return 'dispute-detail';
       const bookingMatch = path.match(/^\/bookings\/([a-zA-Z0-9_-]+)$/);
       if (bookingMatch) return 'booking-detail';
     }
@@ -40,7 +45,19 @@ function MainAppShell() {
 
   const getInitialBookingId = () => {
     if (typeof window !== 'undefined') {
+      const disputeMatch = window.location.pathname.match(
+        /^\/bookings\/([a-zA-Z0-9_-]+)\/dispute$/,
+      );
+      if (disputeMatch) return disputeMatch[1];
       const match = window.location.pathname.match(/^\/bookings\/([a-zA-Z0-9_-]+)$/);
+      return match ? match[1] : null;
+    }
+    return null;
+  };
+
+  const getInitialDisputeId = () => {
+    if (typeof window !== 'undefined') {
+      const match = window.location.pathname.match(/^\/disputes\/([a-zA-Z0-9_-]+)$/);
       return match ? match[1] : null;
     }
     return null;
@@ -59,6 +76,7 @@ function MainAppShell() {
   const [selectedCommunityId, setSelectedCommunityId] = useState(null);
   const [selectedItemId, setSelectedItemId] = useState(null);
   const [selectedBookingId, setSelectedBookingId] = useState(getInitialBookingId);
+  const [selectedDisputeId, setSelectedDisputeId] = useState(getInitialDisputeId);
 
   // Sync with browser navigation
   useEffect(() => {
@@ -71,6 +89,19 @@ function MainAppShell() {
       } else if (path === '/notifications') {
         setCurrentScreen('notifications');
       } else {
+        const bookingDisputeMatch = path.match(/^\/bookings\/([a-zA-Z0-9_-]+)\/dispute$/);
+        if (bookingDisputeMatch) {
+          setSelectedBookingId(bookingDisputeMatch[1]);
+          setSelectedDisputeId(null);
+          setCurrentScreen('dispute-detail');
+          return;
+        }
+        const disputeMatch = path.match(/^\/disputes\/([a-zA-Z0-9_-]+)$/);
+        if (disputeMatch) {
+          setSelectedDisputeId(disputeMatch[1]);
+          setCurrentScreen('dispute-detail');
+          return;
+        }
         const bookingMatch = path.match(/^\/bookings\/([a-zA-Z0-9_-]+)$/);
         if (bookingMatch) {
           setSelectedBookingId(bookingMatch[1]);
@@ -87,6 +118,14 @@ function MainAppShell() {
       if (screen === 'booking-detail' && params.bookingId) {
         setSelectedBookingId(params.bookingId);
         window.history.pushState({}, '', `/bookings/${params.bookingId}`);
+      } else if (screen === 'dispute-detail') {
+        if (params.disputeId) {
+          setSelectedDisputeId(params.disputeId);
+          window.history.pushState({}, '', `/disputes/${params.disputeId}`);
+        } else if (params.bookingId) {
+          setSelectedBookingId(params.bookingId);
+          window.history.pushState({}, '', `/bookings/${params.bookingId}/dispute`);
+        }
       } else if (screen === 'reset-password') {
         window.history.pushState(
           {},
@@ -151,6 +190,16 @@ function MainAppShell() {
           {user && (
             <NotificationBell
               onNavigate={(link) => {
+                const disputeMatch = link.match(/\/disputes\/([a-zA-Z0-9_-]+)/);
+                if (disputeMatch) {
+                  navigateTo('dispute-detail', { disputeId: disputeMatch[1] });
+                  return;
+                }
+                const bookingDisputeMatch = link.match(/\/bookings\/([a-zA-Z0-9_-]+)\/dispute/);
+                if (bookingDisputeMatch) {
+                  navigateTo('dispute-detail', { bookingId: bookingDisputeMatch[1] });
+                  return;
+                }
                 const match = link.match(/\/bookings\/([a-zA-Z0-9_-]+)/);
                 if (match) {
                   navigateTo('booking-detail', { bookingId: match[1] });
@@ -192,6 +241,16 @@ function MainAppShell() {
         {currentScreen === 'notifications' && (
           <NotificationsScreen
             onNavigate={(link) => {
+              const disputeMatch = link.match(/\/disputes\/([a-zA-Z0-9_-]+)/);
+              if (disputeMatch) {
+                navigateTo('dispute-detail', { disputeId: disputeMatch[1] });
+                return;
+              }
+              const bookingDisputeMatch = link.match(/\/bookings\/([a-zA-Z0-9_-]+)\/dispute/);
+              if (bookingDisputeMatch) {
+                navigateTo('dispute-detail', { bookingId: bookingDisputeMatch[1] });
+                return;
+              }
               const match = link.match(/\/bookings\/([a-zA-Z0-9_-]+)/);
               if (match) {
                 navigateTo('booking-detail', { bookingId: match[1] });
@@ -276,6 +335,21 @@ function MainAppShell() {
           <BookingDetailScreen
             bookingId={selectedBookingId}
             onBack={() => navigateTo('my-bookings')}
+            onNavigate={navigateTo}
+          />
+        )}
+
+        {currentScreen === 'dispute-detail' && (
+          <DisputeDetailScreen
+            bookingId={selectedBookingId}
+            disputeId={selectedDisputeId}
+            onBack={() => {
+              if (selectedBookingId) {
+                navigateTo('booking-detail', { bookingId: selectedBookingId });
+              } else {
+                navigateTo('my-bookings');
+              }
+            }}
           />
         )}
 

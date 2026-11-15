@@ -26,6 +26,8 @@ import QRModal from '../components/QRModal.jsx';
 import QRScannerModal from '../components/QRScannerModal.jsx';
 import ConditionPhotosUploader from '../components/ConditionPhotosUploader.jsx';
 import RatingModal from '../components/RatingModal.jsx';
+import OpenDisputeModal from '../components/OpenDisputeModal.jsx';
+import ReportModal from '../components/ReportModal.jsx';
 
 export function BookingDetailScreen({ bookingId, onBack, onNavigate }) {
   const { user, apiFetch } = useAuth();
@@ -56,6 +58,11 @@ export function BookingDetailScreen({ bookingId, onBack, onNavigate }) {
   const [showConfirmReturnModal, setShowConfirmReturnModal] = useState(false);
   const [returnProblemNote, setReturnProblemNote] = useState('');
   const [showRatingModal, setShowRatingModal] = useState(false);
+
+  // Phase 8 Disputes & Reports state
+  const [showDisputeModal, setShowDisputeModal] = useState(false);
+  const [disputeModalReason, setDisputeModalReason] = useState('condition_mismatch');
+  const [showReportUserModal, setShowReportUserModal] = useState(false);
 
   // Live Socket.IO Updates (booking:updated)
   const { socket } = useSocket();
@@ -153,6 +160,20 @@ export function BookingDetailScreen({ bookingId, onBack, onNavigate }) {
   // Check late cancel threshold (6h before start date 00:00:00 IST)
   const startDayZeroIST = new Date(`${booking.startDate}T00:00:00.000+05:30`).getTime();
   const isLateCancel = Date.now() >= startDayZeroIST - 6 * 60 * 60 * 1000;
+
+  // Phase 8: Dispute opening guards
+  const now = Date.now();
+  const pickupDeadlineMs = booking.pickupDeadline ? new Date(booking.pickupDeadline).getTime() : 0;
+  const dueAtMs = booking.dueAt ? new Date(booking.dueAt).getTime() : 0;
+
+  const canOpenNoShowDispute =
+    (isBorrower || isLender) &&
+    booking.status === 'accepted' &&
+    now >= startDayZeroIST &&
+    (pickupDeadlineMs ? now <= pickupDeadlineMs : true);
+
+  const canOpenConditionDispute =
+    isBorrower && booking.status === 'picked_up' && (dueAtMs ? now <= dueAtMs : true);
 
   // Action Handlers
   async function handleAcceptBooking() {
@@ -543,6 +564,20 @@ export function BookingDetailScreen({ bookingId, onBack, onNavigate }) {
               stage="pickup"
               onUploadComplete={loadBooking}
             />
+
+            {canOpenNoShowDispute && (
+              <button
+                type="button"
+                onClick={() => {
+                  setDisputeModalReason('no_show');
+                  setShowDisputeModal(true);
+                }}
+                className="w-full py-2.5 bg-rose-50 text-rose-700 font-semibold rounded-xl hover:bg-rose-100 border border-rose-200 transition text-xs flex items-center justify-center gap-1.5 shadow-xs"
+              >
+                <AlertTriangle className="w-3.5 h-3.5" />
+                <span>Report Counterparty No-Show</span>
+              </button>
+            )}
           </div>
         )}
 
@@ -587,6 +622,20 @@ export function BookingDetailScreen({ bookingId, onBack, onNavigate }) {
               stage="return"
               onUploadComplete={loadBooking}
             />
+
+            {canOpenConditionDispute && (
+              <button
+                type="button"
+                onClick={() => {
+                  setDisputeModalReason('condition_mismatch');
+                  setShowDisputeModal(true);
+                }}
+                className="w-full py-2.5 bg-amber-50 text-amber-900 font-semibold rounded-xl hover:bg-amber-100 border border-amber-200 transition text-xs flex items-center justify-center gap-1.5 shadow-xs"
+              >
+                <AlertTriangle className="w-3.5 h-3.5" />
+                <span>Report Condition Mismatch Dispute</span>
+              </button>
+            )}
           </div>
         )}
 
@@ -634,16 +683,35 @@ export function BookingDetailScreen({ bookingId, onBack, onNavigate }) {
           </div>
         )}
 
-        {/* Phase 7: Disputed status */}
+        {/* Phase 8: Disputed status banner */}
         {booking.status === 'disputed' && (
-          <div className="bg-surface rounded-2xl border border-rose-200 p-4 shadow-xs space-y-2 bg-rose-50/50">
-            <h3 className="font-semibold text-sm text-rose-900 flex items-center gap-1.5">
-              <AlertTriangle className="w-4 h-4 text-rose-600" /> Booking Under Dispute
-            </h3>
+          <div className="bg-surface rounded-2xl border border-rose-200 p-4 shadow-xs space-y-3 bg-rose-50/60">
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold text-sm text-rose-900 flex items-center gap-1.5">
+                <AlertTriangle className="w-4 h-4 text-rose-600" /> Booking Under Dispute
+              </h3>
+              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-300">
+                DISPUTED
+              </span>
+            </div>
             <p className="text-xs text-rose-800">
-              Reason: <span className="font-semibold">{booking.disputeReason}</span>. Funds remain
-              frozen until customer care reviews the case.
+              Reason:{' '}
+              <span className="font-semibold uppercase">
+                {booking.disputeReason?.replace('_', ' ')}
+              </span>
+              . Escrow funds remain frozen until customer care resolves the case.
             </p>
+            <button
+              type="button"
+              onClick={() => {
+                if (onNavigate) {
+                  onNavigate('dispute-detail', { bookingId: booking._id });
+                }
+              }}
+              className="w-full py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-semibold rounded-xl text-xs transition shadow-xs flex items-center justify-center gap-1.5"
+            >
+              <span>View Dispute Case File & Evidence</span>
+            </button>
           </div>
         )}
 
@@ -901,6 +969,35 @@ export function BookingDetailScreen({ bookingId, onBack, onNavigate }) {
           </div>
         </div>
       )}
+
+      {/* Phase 8: Open Dispute Modal */}
+      <OpenDisputeModal
+        isOpen={showDisputeModal}
+        onClose={() => setShowDisputeModal(false)}
+        bookingId={booking._id}
+        defaultReason={disputeModalReason}
+        onSuccess={() => {
+          loadBooking();
+          if (onNavigate) {
+            onNavigate('dispute-detail', { bookingId: booking._id });
+          }
+        }}
+      />
+
+      {/* Phase 8: Report User Modal */}
+      <ReportModal
+        isOpen={showReportUserModal}
+        onClose={() => setShowReportUserModal(false)}
+        targetType="user"
+        targetId={
+          isBorrower
+            ? booking.lenderId?._id || booking.lenderId
+            : booking.borrowerId?._id || booking.borrowerId
+        }
+        targetTitle={
+          isBorrower ? booking.lenderId?.name || 'Lender' : booking.borrowerId?.name || 'Borrower'
+        }
+      />
     </div>
   );
 }

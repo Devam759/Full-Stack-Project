@@ -8,14 +8,17 @@ import {
   AlertTriangle,
   Clock,
   Star,
+  Flag,
 } from 'lucide-react';
 import { formatPaise, BUSINESS_CONFIG } from '@borrowloop/shared';
 import TrustBadge from '../components/TrustBadge.jsx';
+import ReportModal from '../components/ReportModal.jsx';
 
 export function ItemDetailScreen({ itemId, onBack, onRequestBooking }) {
   const [item, setItem] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [showReportModal, setShowReportModal] = useState(false);
 
   // Active Photo Carousel index
   const [activePhotoIdx, setActivePhotoIdx] = useState(0);
@@ -135,15 +138,25 @@ export function ItemDetailScreen({ itemId, onBack, onRequestBooking }) {
 
   return (
     <div className="p-4 pb-28 space-y-5">
-      {/* Back button */}
-      <button
-        type="button"
-        onClick={onBack}
-        className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900"
-      >
-        <ArrowLeft className="w-4 h-4" />
-        <span>Back to items</span>
-      </button>
+      {/* Top Header Navigation */}
+      <div className="flex items-center justify-between">
+        <button
+          type="button"
+          onClick={onBack}
+          className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          <span>Back to items</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setShowReportModal(true)}
+          className="inline-flex items-center gap-1 text-xs text-slate-400 hover:text-rose-600 transition"
+        >
+          <Flag className="w-3.5 h-3.5" />
+          <span>Report item</span>
+        </button>
+      </div>
 
       {/* Photo Carousel & Gallery */}
       <div className="space-y-2">
@@ -383,6 +396,15 @@ export function ItemDetailScreen({ itemId, onBack, onRequestBooking }) {
           Request to Borrow
         </button>
       </div>
+
+      {/* Report Item Modal */}
+      <ReportModal
+        isOpen={showReportModal}
+        onClose={() => setShowReportModal(false)}
+        targetType="item"
+        targetId={item._id}
+        targetTitle={item.title}
+      />
     </div>
   );
 }

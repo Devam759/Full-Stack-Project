@@ -9,3 +9,4 @@
 export { accrueLateChargesJob } from './lateChargeJob.js';
 export { autoCompleteReturnsJob } from './autoCompleteReturnJob.js';
 export { revealRatingsJob } from './revealRatingsJob.js';
+export { closeDisputesJob, escalateDisputesJob } from './disputeLifecycleJobs.js';

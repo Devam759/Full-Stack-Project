@@ -19,7 +19,7 @@ Indexes: `(communityId, userId)` unique, `(userId)`.
 
 ## items
 
-`ownerId, title, description, category, condition, photos[], rentPerDayPaise, depositPaise, lateFeePerDayPaise?, minDays, maxDays, communityIds[], location (GeoJSON, approximate), status (active|paused|hidden|removed), reportCount, ratingAvg, ratingCount`
+`ownerId, title, description, category, condition, photos[], rentPerDayPaise, depositPaise, lateFeePerDayPaise?, minDays, maxDays, communityIds[], location (GeoJSON, approximate), status (active|paused|pending_review|hidden|removed), hiddenFromStatus?, hiddenReason? (auto_reports|care), reportCount, ratingAvg, ratingCount`
 Indexes: `location` 2dsphere, text on `title, description`, `(communityIds, status, category, createdAt)`, `(ownerId, status)`.
 
 ## item_day_locks
@@ -29,8 +29,18 @@ Indexes: `(itemId, day)` unique.
 
 ## bookings
 
-`itemId, lenderId, borrowerId, startDate, endDate, dueAt, days, rentPaise, depositPaise, lateFeePerDayPaise, commissionBps, status, statusHistory[], pickupAt?, returnAt?, lateChargePaise, extensions[] { id, requestedEndDate, extraDays, extraRentPaise, status, requestedAt, respondedAt?, expiresAt?, rejectionReason? }, cancelledBy?, cancelReason?, completedAt?, completedBy? (lender|system), returnConfirmDeadline?, disputeReason? (damage|not_returned), disputeOpenedAt?, expiresAt`
+`itemId, lenderId, borrowerId, startDate, endDate, dueAt, days, rentPaise, depositPaise, lateFeePerDayPaise, commissionBps, status, statusHistory[], pickupAt?, returnAt?, lateChargePaise, extensions[] { id, requestedEndDate, extraDays, extraRentPaise, status, requestedAt, respondedAt?, expiresAt?, rejectionReason? }, cancelledBy?, cancelReason?, completedAt?, completedBy? (lender|system|care), returnConfirmDeadline?, disputeReason? (damage|not_returned|condition_mismatch|no_show), disputeOpenedAt?, expiresAt`
 Indexes: `(borrowerId, status)`, `(lenderId, status)`, `(itemId, startDate, endDate)`, `(status, expiresAt)`, `(status, dueAt)`.
+
+## disputes
+
+`bookingId (unique), disputeReason (damage|not_returned|condition_mismatch|no_show), source ('user'|'system'), openedById?, againstUserId, status ('opened'|'assigned'|'decided'|'appealed'|'closed'), statusHistory[], assignedAgentId?, assignedAt?, evidence[] { by, notes, photos[{ publicId, url }], createdAt }, decision { decidedById, decidedAt, depositToLenderPaise, depositToBorrowerPaise, appliedLateChargePaise, rentOutcome, faultUserId?, penaltyKind, borrowerAccountAction, note, internalNote, settlement { lenderPayoutPaise, commissionPaise, borrowerRefundPaise } }, appeal { appealedById, appealedAt, reason, status ('pending'|'upheld'|'overturned'), decidedById?, decidedAt?, note? }, closedAt?, createdAt, updatedAt`
+Indexes: `bookingId` unique, `(status, createdAt)`, `(assignedAgentId, status)`, `(openedById)`, `(againstUserId)`.
+
+## reports
+
+`reporterId, targetType ('item'|'user'|'message'), targetId, targetOwnerId, reason, details, snapshot? { text, senderId, bookingId, createdAt }, status ('pending'|'reviewed'|'dismissed'|'actioned'), reviewedById?, reviewedAt?, actionTaken?, notes?, createdAt, updatedAt`
+Indexes: `(reporterId, targetType, targetId)` unique, `(targetType, targetId, status)`, `(status, createdAt)`.
 
 ## handovers
 

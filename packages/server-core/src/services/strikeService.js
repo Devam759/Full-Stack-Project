@@ -10,6 +10,7 @@
 import { AppError, ERROR_CODES, BUSINESS_CONFIG } from '@borrowloop/shared';
 import User from '../models/User.js';
 import Notification from '../models/Notification.js';
+import TrustEvent from '../models/TrustEvent.js';
 import { recordTrustEvent } from './trustService.js';
 
 /**
@@ -36,16 +37,31 @@ export function assertNotSuspended(user) {
 
 /**
  * Applies a strike to a user according to the strike progression ladder.
+ * Accepts an explicit eventKey for idempotency (e.g. strike_${disputeId_or_reportId}_${userId})
+ * and ignores duplicates.
  */
 export async function applyStrike({
   userId,
   reason = 'Policy violation',
   meta = {},
   session = null,
+  eventKey = null,
 }) {
   const user = await User.findById(userId).session(session);
   if (!user) {
     throw new AppError(ERROR_CODES.USER_NOT_FOUND, 'User not found', 404);
+  }
+
+  const finalEventKey = eventKey || `strike_${user._id}_${(user.strikes || 0) + 1}_${Date.now()}`;
+  if (eventKey) {
+    const existing = await TrustEvent.findOne({ eventKey: finalEventKey }).session(session);
+    if (existing) {
+      return {
+        strikes: user.strikes || 0,
+        banUntil: user.banUntil,
+        status: user.status,
+      };
+    }
   }
 
   const newStrikes = (user.strikes || 0) + 1;
@@ -112,7 +128,7 @@ export async function applyStrike({
   await recordTrustEvent({
     userId: user._id,
     type: 'strike',
-    eventKey: `strike_${user._id}_${newStrikes}_${now.getTime()}`,
+    eventKey: finalEventKey,
     meta: { strikes: newStrikes, reason, ...meta },
     session,
   });
@@ -126,6 +142,7 @@ export async function applyStrike({
 
 /**
  * Reverses a strike (used in dispute resolutions or admin corrections).
+ * Only restores status to 'active' if the user was currently 'banned', preventing unfreezing frozen users.
  */
 export async function reverseStrike({ userId, reason = 'Strike reversed', session = null }) {
   const user = await User.findById(userId).session(session);
@@ -141,7 +158,9 @@ export async function reverseStrike({ userId, reason = 'Strike reversed', sessio
   let banUntil = user.banUntil;
 
   if (previousStrikes >= 3 && newStrikes < 3) {
-    status = 'active';
+    if (user.status === 'banned') {
+      status = 'active';
+    }
   }
   if (previousStrikes >= 2 && newStrikes < 2) {
     banUntil = null;

@@ -30,11 +30,13 @@ import {
   handoverPhotosSchema,
   returnConfirmSchema,
   createRatingSchema,
+  createDisputeSchema,
 } from '@borrowloop/shared';
 import * as bookingController from './bookingController.js';
 import * as chatController from '../chat/chatController.js';
 import * as handoverController from '../handovers/handoverController.js';
 import * as ratingController from '../ratings/ratingController.js';
+import * as disputeController from '../disputes/disputeController.js';
 
 const router = Router();
 
@@ -86,6 +88,16 @@ const codeLimiter = createRateLimiter({
   maxRequests: BUSINESS_CONFIG.HANDOVER.RATE_LIMITS.CODE.maxRequests,
   keyPrefix: 'rl:handover:code',
   keyGenerator: (req) => req.user?.id || req.ip,
+});
+
+const openDisputeLimiter = createRateLimiter({
+  get redis() {
+    return getRedisClient();
+  },
+  windowSeconds: BUSINESS_CONFIG.DISPUTES.RATE_LIMIT_OPEN?.windowSeconds || 3600,
+  maxRequests: BUSINESS_CONFIG.DISPUTES.RATE_LIMIT_OPEN?.maxRequests || 5,
+  keyPrefix: 'rl:dispute:open',
+  keyGenerator: (req) => req.user?._id?.toString() || req.ip,
 });
 
 // All booking routes require authenticated user and verified email
@@ -242,5 +254,16 @@ router.post(
 );
 
 router.get('/:id/ratings', ratingController.getBookingRatings);
+
+// Disputes (Phase 8)
+router.post(
+  '/:id/disputes',
+  requireIdempotencyKey(),
+  openDisputeLimiter,
+  validate({ body: createDisputeSchema }),
+  disputeController.openDispute,
+);
+
+router.get('/:id/dispute', disputeController.getBookingDispute);
 
 export default router;

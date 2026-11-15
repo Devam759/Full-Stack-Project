@@ -9,3 +9,5 @@ export * from './chat.js';
 export * from './notification.js';
 export * from './handoverSchemas.js';
 export * from './ratingSchemas.js';
+export * from './disputeSchemas.js';
+export * from './reportSchemas.js';

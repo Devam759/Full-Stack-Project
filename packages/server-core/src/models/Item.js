@@ -103,6 +103,15 @@ const itemSchema = new mongoose.Schema(
       default: 'active',
       index: true,
     },
+    hiddenFromStatus: {
+      type: String,
+      default: null,
+    },
+    hiddenReason: {
+      type: String,
+      enum: ['auto_reports', 'care_agent', 'admin', null],
+      default: null,
+    },
     reportCount: {
       type: Number,
       default: 0,

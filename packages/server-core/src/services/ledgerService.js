@@ -17,6 +17,14 @@ import LedgerEntry from '../models/LedgerEntry.js';
 import LedgerOperation from '../models/LedgerOperation.js';
 import IdempotencyKey from '../models/IdempotencyKey.js';
 import User from '../models/User.js';
+import Booking from '../models/Booking.js';
+import Dispute from '../models/Dispute.js';
+import ItemDayLock from '../models/ItemDayLock.js';
+import { transitionBookingStatus } from './bookingTransitions.js';
+import { writeAuditLogTx } from './auditLogService.js';
+import { applyStrike } from './strikeService.js';
+import { recordTrustEvent, recompute } from './trustService.js';
+import { emitDomainEvent } from './eventStub.js';
 import { saveIdempotencyRecord } from '../common/idempotency.js';
 
 /**
@@ -1206,6 +1214,472 @@ export async function settleBookingCompletion({
   }
 }
 
+/**
+ * Executes final monetary settlement for a dispute.
+ * Double-entry balanced ledger operation:
+ * - Debits borrower frozen funds for full held amount (rent + deposit).
+ * - Credits borrower available with depositToBorrowerPaise (deposit_release)
+ *   and full rent if rentOutcome === 'refund_borrower' (dispute_refund).
+ * - Credits platform revenue with 15% commission on lender earnings
+ *   (rent + late charge). (0% commission on deposit compensation).
+ * - Credits lender available with net earnings + depositToLenderPaise (deposit_compensation).
+ * - Asserts zero sum across all entries.
+ * - Transitions booking status (RESOLVE_DISPUTE or RESOLVE_NO_SHOW_DISPUTE).
+ * - Applies trust penalties and strikes idempotently.
+ * - Writes immutable audit log row within the same session.
+ * - Settle once enforced via LedgerOperation type 'dispute_settlement'.
+ */
+export async function settleDisputeDecision({
+  disputeId,
+  decidedById,
+  depositToLenderPaise,
+  depositToBorrowerPaise,
+  applyLateCharge = true,
+  rentOutcome,
+  faultUserId = null,
+  penaltyKind = 'none',
+  borrowerAccountAction = 'none',
+  note,
+  internalNote = '',
+  idempotency = null,
+  throwOnAlreadyApplied = true,
+  session: externalSession = null,
+}) {
+  assertPaise(depositToLenderPaise, 'depositToLenderPaise');
+  assertPaise(depositToBorrowerPaise, 'depositToBorrowerPaise');
+
+  if (rentOutcome !== 'lender' && rentOutcome !== 'refund_borrower') {
+    throw new AppError(
+      ERROR_CODES.DISPUTE_DECISION_INVALID,
+      `Invalid rent outcome: '${rentOutcome}'. Must be 'lender' or 'refund_borrower'.`,
+      400,
+    );
+  }
+
+  if (!note || note.trim().length < (BUSINESS_CONFIG.DISPUTES.DECISION_NOTE_MIN_LENGTH || 20)) {
+    throw new AppError(
+      ERROR_CODES.DISPUTE_DECISION_INVALID,
+      `Decision note must be at least ${BUSINESS_CONFIG.DISPUTES.DECISION_NOTE_MIN_LENGTH || 20} characters`,
+      400,
+    );
+  }
+
+  const execute = async (session) => {
+    // 1. Fetch Dispute and Booking
+    const dispute = await Dispute.findById(disputeId).session(session);
+    if (!dispute) {
+      throw new AppError(ERROR_CODES.DISPUTE_NOT_FOUND, 'Dispute not found', 404);
+    }
+
+    if (dispute.status !== 'opened' && dispute.status !== 'assigned') {
+      throw new AppError(
+        ERROR_CODES.DISPUTE_INVALID_STATE,
+        `Dispute is in '${dispute.status}' state and cannot be decided`,
+        409,
+      );
+    }
+
+    const booking = await Booking.findById(dispute.bookingId).session(session);
+    if (!booking) {
+      throw new AppError(ERROR_CODES.BOOKING_NOT_FOUND, 'Booking not found', 404);
+    }
+
+    if (booking.status !== 'disputed') {
+      throw new AppError(
+        ERROR_CODES.INVALID_BOOKING_TRANSITION,
+        `Booking is in '${booking.status}' state; must be 'disputed'`,
+        409,
+      );
+    }
+
+    // 2. Settle-once guard
+    const opRef = dispute._id.toString();
+    const op = await recordLedgerOperation({
+      session,
+      bookingId: booking._id,
+      operationType: 'dispute_settlement',
+      opRef,
+      meta: { disputeId: dispute._id, rentOutcome },
+      throwOnAlreadyApplied,
+    });
+    if (op.alreadyApplied) {
+      return op;
+    }
+
+    // 3. Late charge and deposit split verification
+    const appliedLateChargePaise = applyLateCharge ? booking.lateChargePaise || 0 : 0;
+    assertPaise(appliedLateChargePaise, 'appliedLateChargePaise');
+
+    const remainingDepositPaise = booking.depositPaise - appliedLateChargePaise;
+    if (remainingDepositPaise < 0) {
+      throw new AppError(
+        ERROR_CODES.DISPUTE_DECISION_INVALID,
+        'Applied late charge exceeds total security deposit',
+        400,
+      );
+    }
+
+    if (depositToLenderPaise + depositToBorrowerPaise !== remainingDepositPaise) {
+      throw new AppError(
+        ERROR_CODES.DISPUTE_DECISION_INVALID,
+        `Deposit split (${depositToLenderPaise} + ${depositToBorrowerPaise} = ${depositToLenderPaise + depositToBorrowerPaise} paise) must equal remaining deposit (${remainingDepositPaise} paise)`,
+        400,
+      );
+    }
+
+    const totalHeldPaise = booking.rentPaise + booking.depositPaise;
+    const borrowerId = booking.borrowerId;
+    const lenderId = booking.lenderId;
+
+    // 4. Calculate payouts and commission
+    // Lender earnings subject to commission (15%): rent (if lender) + applied late charge
+    const lenderEarningsPaise =
+      (rentOutcome === 'lender' ? booking.rentPaise : 0) + appliedLateChargePaise;
+    const commissionPaise = Math.round(
+      (lenderEarningsPaise * BUSINESS_CONFIG.COMMISSION_BPS) / 10000,
+    );
+    const netLenderEarningsPaise = lenderEarningsPaise - commissionPaise;
+    // Deposit compensation to lender has 0% commission
+    const totalLenderPayoutPaise = netLenderEarningsPaise + depositToLenderPaise;
+
+    const borrowerRentRefundPaise = rentOutcome === 'refund_borrower' ? booking.rentPaise : 0;
+    const totalBorrowerRefundPaise = borrowerRentRefundPaise + depositToBorrowerPaise;
+
+    // 5. Update Wallets
+    await Wallet.getOrCreate(borrowerId, session);
+    await Wallet.getOrCreate(lenderId, session);
+
+    const borrowerWallet = await Wallet.findOneAndUpdate(
+      {
+        userId: borrowerId,
+        frozenPaise: { $gte: totalHeldPaise },
+      },
+      {
+        $inc: {
+          frozenPaise: -totalHeldPaise,
+          availablePaise: totalBorrowerRefundPaise,
+        },
+        $set: { updatedAt: new Date() },
+      },
+      { session, new: true },
+    );
+
+    if (!borrowerWallet) {
+      throw new AppError(
+        ERROR_CODES.INTERNAL_ERROR,
+        'Borrower does not have sufficient frozen funds for dispute settlement',
+        500,
+      );
+    }
+
+    const lenderWallet = await Wallet.findOneAndUpdate(
+      { userId: lenderId },
+      {
+        $inc: { availablePaise: totalLenderPayoutPaise },
+        $set: { updatedAt: new Date() },
+      },
+      { session, new: true },
+    );
+
+    // 6. Build double-entry balanced ledger entries
+    const txnId = crypto.randomUUID();
+    const now = new Date();
+    const meta = { disputeId: dispute._id, rentOutcome, applyLateCharge };
+
+    const entries = [
+      // 1. Borrower frozen debit
+      {
+        txnId,
+        bookingId: booking._id,
+        account: 'frozen',
+        userId: borrowerId,
+        amountPaise: -totalHeldPaise,
+        balanceAfterPaise: borrowerWallet.frozenPaise,
+        type: 'dispute_settlement',
+        idempotencyKey: idempotency?.key || null,
+        meta,
+        createdAt: now,
+      },
+    ];
+
+    // 2. Borrower rent refund (if refunded)
+    if (borrowerRentRefundPaise > 0) {
+      entries.push({
+        txnId,
+        bookingId: booking._id,
+        account: 'available',
+        userId: borrowerId,
+        amountPaise: borrowerRentRefundPaise,
+        balanceAfterPaise: borrowerWallet.availablePaise - depositToBorrowerPaise,
+        type: 'dispute_refund',
+        idempotencyKey: idempotency?.key || null,
+        meta,
+        createdAt: now,
+      });
+    }
+
+    // 3. Borrower deposit release (if any)
+    if (depositToBorrowerPaise > 0) {
+      entries.push({
+        txnId,
+        bookingId: booking._id,
+        account: 'available',
+        userId: borrowerId,
+        amountPaise: depositToBorrowerPaise,
+        balanceAfterPaise: borrowerWallet.availablePaise,
+        type: 'deposit_release',
+        idempotencyKey: idempotency?.key || null,
+        meta,
+        createdAt: now,
+      });
+    }
+
+    // 4. Lender rental/late payout (if any)
+    if (netLenderEarningsPaise > 0) {
+      entries.push({
+        txnId,
+        bookingId: booking._id,
+        account: 'available',
+        userId: lenderId,
+        amountPaise: netLenderEarningsPaise,
+        balanceAfterPaise: lenderWallet.availablePaise - depositToLenderPaise,
+        type: 'dispute_settlement',
+        idempotencyKey: idempotency?.key || null,
+        meta,
+        createdAt: now,
+      });
+    }
+
+    // 5. Lender deposit compensation (if any - 0% commission)
+    if (depositToLenderPaise > 0) {
+      entries.push({
+        txnId,
+        bookingId: booking._id,
+        account: 'available',
+        userId: lenderId,
+        amountPaise: depositToLenderPaise,
+        balanceAfterPaise: lenderWallet.availablePaise,
+        type: 'deposit_compensation',
+        idempotencyKey: idempotency?.key || null,
+        meta,
+        createdAt: now,
+      });
+    }
+
+    // 6. Platform commission (if any)
+    if (commissionPaise > 0) {
+      entries.push({
+        txnId,
+        bookingId: booking._id,
+        account: 'platform_revenue',
+        userId: null,
+        amountPaise: commissionPaise,
+        balanceAfterPaise: null,
+        type: 'commission',
+        idempotencyKey: idempotency?.key || null,
+        meta,
+        createdAt: now,
+      });
+    }
+
+    assertZeroSum(entries);
+    await LedgerEntry.insertMany(entries, { session });
+
+    // 7. Unlock & Clean up Day Locks
+    await ItemDayLock.deleteMany({ bookingId: booking._id }, { session });
+
+    // 8. State Machine Transition
+    const isNoShowFullRefund =
+      dispute.disputeReason === 'no_show' &&
+      rentOutcome === 'refund_borrower' &&
+      depositToBorrowerPaise === booking.depositPaise;
+
+    const transitionEvent = isNoShowFullRefund ? 'RESOLVE_NO_SHOW_DISPUTE' : 'RESOLVE_DISPUTE';
+    const targetStatus = isNoShowFullRefund ? 'cancelled' : 'completed';
+
+    const updatedBooking = await transitionBookingStatus({
+      bookingId: booking._id,
+      fromStatus: 'disputed',
+      toStatus: targetStatus,
+      event: transitionEvent,
+      actorRole: 'care_agent',
+      actorId: decidedById,
+      reason: note,
+      extraFields: { completedBy: 'care' },
+      session,
+    });
+
+    // 9. Apply penalties
+    if (faultUserId) {
+      const faultUserIdStr = faultUserId.toString();
+      if (penaltyKind === 'lost_dispute') {
+        await applyStrike({
+          userId: faultUserId,
+          reason: 'lost_dispute',
+          meta: { disputeId: dispute._id },
+          eventKey: `strike_${dispute._id}_${faultUserIdStr}`,
+          session,
+        });
+        await recordTrustEvent({
+          userId: faultUserId,
+          type: 'lost_dispute',
+          bookingId: booking._id,
+          eventKey: `trust_lost_dispute_${dispute._id}`,
+          meta: { disputeId: dispute._id },
+          session,
+        });
+        await recompute(faultUserId, session);
+      } else if (penaltyKind === 'rejected_damage_claim') {
+        await recordTrustEvent({
+          userId: faultUserId,
+          type: 'rejected_damage_claim',
+          bookingId: booking._id,
+          eventKey: `trust_rej_claim_${dispute._id}`,
+          meta: { disputeId: dispute._id },
+          session,
+        });
+        await recompute(faultUserId, session);
+      } else if (penaltyKind === 'no_show') {
+        await recordTrustEvent({
+          userId: faultUserId,
+          type: 'no_show',
+          bookingId: booking._id,
+          eventKey: `trust_no_show_${dispute._id}`,
+          meta: { disputeId: dispute._id },
+          session,
+        });
+        await recompute(faultUserId, session);
+      }
+    }
+
+    if (borrowerAccountAction === 'unfreeze') {
+      const borrowerUser = await User.findById(borrowerId).session(session);
+      if (borrowerUser && borrowerUser.status === 'frozen') {
+        borrowerUser.status = 'active';
+        await borrowerUser.save({ session });
+      }
+    } else if (borrowerAccountAction === 'strike' && penaltyKind !== 'lost_dispute') {
+      await applyStrike({
+        userId: borrowerId,
+        reason: 'dispute_decision',
+        meta: { disputeId: dispute._id },
+        eventKey: `strike_${dispute._id}_${borrowerId}`,
+        session,
+      });
+    }
+
+    // 10. Update Dispute
+    dispute.status = 'decided';
+    dispute.decision = {
+      decidedById,
+      decidedAt: now,
+      depositToLenderPaise,
+      depositToBorrowerPaise,
+      appliedLateChargePaise,
+      rentOutcome,
+      faultUserId: faultUserId || null,
+      penaltyKind: penaltyKind || 'none',
+      borrowerAccountAction: borrowerAccountAction || 'none',
+      note,
+      internalNote: internalNote || '',
+      settlement: {
+        lenderPayoutPaise: totalLenderPayoutPaise,
+        commissionPaise,
+        borrowerRefundPaise: totalBorrowerRefundPaise,
+      },
+    };
+    dispute.statusHistory.push({
+      status: 'decided',
+      changedBy: decidedById,
+      note,
+      changedAt: now,
+    });
+    await dispute.save({ session });
+
+    // 11. Write Audit Log (fail-closed)
+    await writeAuditLogTx(
+      {
+        actorId: decidedById,
+        actorRole: 'care_agent',
+        action: 'dispute.decided',
+        targetType: 'dispute',
+        targetId: dispute._id,
+        meta: {
+          bookingId: booking._id,
+          rentOutcome,
+          depositToLenderPaise,
+          depositToBorrowerPaise,
+          appliedLateChargePaise,
+          faultUserId,
+          penaltyKind,
+          borrowerAccountAction,
+        },
+        ip: null,
+        userAgent: null,
+      },
+      { session },
+    );
+
+    // 12. Emit Domain Event
+    await emitDomainEvent({
+      type: 'dispute.decided',
+      bookingId: booking._id,
+      actorId: decidedById,
+      eventKey: `dispute_decided_${dispute._id}`,
+      payload: {
+        disputeId: dispute._id,
+        rentOutcome,
+        settlement: dispute.decision.settlement,
+      },
+      session,
+    });
+
+    const responsePayload = {
+      dispute: dispute.toJSON ? dispute.toJSON() : dispute,
+      booking: updatedBooking.toJSON ? updatedBooking.toJSON() : updatedBooking,
+      settlement: dispute.decision.settlement,
+    };
+
+    if (idempotency?.key) {
+      await saveIdempotencyRecord({
+        userId: decidedById,
+        key: idempotency.key,
+        requestHash: idempotency.requestHash,
+        statusCode: 200,
+        responseBody: responsePayload,
+        session,
+      });
+    }
+
+    return responsePayload;
+  };
+
+  try {
+    if (externalSession) {
+      return await execute(externalSession);
+    }
+    return await runInTransactionWithRetry(execute);
+  } catch (err) {
+    if (isLedgerOpDuplicateError(err)) {
+      if (throwOnAlreadyApplied) {
+        throw new AppError(
+          ERROR_CODES.OPERATION_ALREADY_APPLIED,
+          `Operation dispute_settlement has already been applied for dispute ${disputeId}`,
+          409,
+          { disputeId, operationType: 'dispute_settlement' },
+        );
+      }
+      return {
+        alreadyApplied: true,
+        status: 'already_applied',
+        disputeId,
+        operationType: 'dispute_settlement',
+      };
+    }
+    throw err;
+  }
+}
+
 export default {
   assertUserEligibleForWallet,
   runInTransactionWithRetry,
@@ -1216,4 +1690,5 @@ export default {
   releaseDeposit,
   refundCancelledBooking,
   settleBookingCompletion,
+  settleDisputeDecision,
 };

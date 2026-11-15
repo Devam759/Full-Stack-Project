@@ -39,6 +39,9 @@ export const BUSINESS_CONFIG = Object.freeze({
     'booking_cancel_refund',
     'settlement',
     'commission',
+    'dispute_settlement',
+    'deposit_compensation',
+    'dispute_refund',
   ]),
   WALLET_RATE_LIMITS: Object.freeze({
     ADD_FUNDS: Object.freeze({ windowSeconds: 60, maxRequests: 10 }),
@@ -157,8 +160,42 @@ export const BUSINESS_CONFIG = Object.freeze({
     'care',
   ]),
 
-  // Moderation & Reports
+  // Disputes (Phase 8)
+  DISPUTES: Object.freeze({
+    REASONS: Object.freeze(['damage', 'not_returned', 'condition_mismatch', 'no_show']),
+    STATUSES: Object.freeze(['opened', 'assigned', 'decided', 'appealed', 'closed']),
+    APPEAL_WINDOW_DAYS: 7,
+    APPEAL_WINDOW_SECONDS: 7 * 24 * 60 * 60,
+    DECISION_NOTE_MIN_LENGTH: 20,
+    NOTE_MAX_LENGTH: 2000,
+    DETAILS_MAX_LENGTH: 2000,
+    MAX_EVIDENCE_PHOTOS_PER_ENTRY: 6,
+    UNASSIGNED_ESCALATE_HOURS: 24,
+    RATE_LIMITS: Object.freeze({
+      OPEN: Object.freeze({ windowSeconds: 3600, maxRequests: 5 }),
+      EVIDENCE: Object.freeze({ windowSeconds: 3600, maxRequests: 20 }),
+    }),
+  }),
+
+  // Moderation & Reports (Phase 8)
   ITEM_REPORTS_HIDE_THRESHOLD: 3,
+  REPORTS: Object.freeze({
+    REASONS: Object.freeze({
+      item: Object.freeze(['prohibited_item', 'misleading', 'unsafe', 'spam', 'other']),
+      user: Object.freeze(['harassment', 'fraud', 'fake_profile', 'inappropriate', 'other']),
+      message: Object.freeze(['harassment', 'spam', 'threat', 'inappropriate', 'other']),
+    }),
+    DETAILS_MAX_LENGTH: 1000,
+    RATE_LIMIT: Object.freeze({ windowSeconds: 3600, maxRequests: 10 }),
+    CARE_ACTIONS: Object.freeze([
+      'dismiss',
+      'hide_item',
+      'remove_item',
+      'restore_item',
+      'warn_user',
+      'strike_user',
+    ]),
+  }),
   PROHIBITED_CATEGORIES: Object.freeze([
     'weapons and ammunition',
     'drugs',
@@ -278,6 +315,7 @@ export const BUSINESS_CONFIG = Object.freeze({
     PROFILE: 'borrowloop/profiles',
     ITEM: 'borrowloop/items',
     HANDOVER: 'borrowloop/handovers',
+    DISPUTE: 'borrowloop/disputes',
   }),
 
   // Pagination & Lists
@@ -308,6 +346,8 @@ export const BUSINESS_CONFIG = Object.freeze({
     OUTBOX_DISPATCHER_SECONDS: 10,
     DUE_REMINDERS_THRESHOLD_HOURS: 2,
     PICKUP_REMINDERS_THRESHOLD_HOURS: 2,
+    CLOSE_DISPUTES_MINUTES: 60,
+    ESCALATE_DISPUTES_MINUTES: 60,
   }),
 
   // Chat Configuration (Phase 6)
@@ -361,6 +401,14 @@ export const BUSINESS_CONFIG = Object.freeze({
       'ratings_revealed',
       'strike_warning',
       'suspension_started',
+      'dispute_opened',
+      'dispute_evidence_requested',
+      'dispute_decided',
+      'dispute_appealed',
+      'dispute_escalated',
+      'item_auto_hidden',
+      'report_reviewed',
+      'user_warning',
     ]),
   }),
 

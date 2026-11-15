@@ -28,6 +28,8 @@ export { default as Notification } from './models/Notification.js';
 export { default as Handover } from './models/Handover.js';
 export { default as TrustEvent } from './models/TrustEvent.js';
 export { default as Rating } from './models/Rating.js';
+export { default as Dispute } from './models/Dispute.js';
+export { default as Report } from './models/Report.js';
 
 // Common
 export * from './common/dates.js';
@@ -48,3 +50,5 @@ export * from './services/strikeService.js';
 export { default as strikeService } from './services/strikeService.js';
 export * from './services/ratingService.js';
 export { default as ratingService } from './services/ratingService.js';
+export * from './services/auditLogService.js';
+export { default as auditLogService } from './services/auditLogService.js';
