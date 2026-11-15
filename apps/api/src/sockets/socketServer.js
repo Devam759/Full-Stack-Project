@@ -162,7 +162,7 @@ export function initSocketServer(httpServer) {
   });
 
   // Connection Lifecycle
-  io.on('connection', async (socket) => {
+  io.on('connection', (socket) => {
     const userId = socket.user.id;
     socket.join(`user:${userId}`);
     logger.info({ userId, socketId: socket.id }, 'User connected to real-time socket');
@@ -180,25 +180,31 @@ export function initSocketServer(httpServer) {
       }
     }
 
-    // Register socket connection with crash-safe heartbeat
+    // Register socket connection with crash-safe heartbeat (non-blocking)
     let heartbeatTimer = null;
-    if (redis && redis.status === 'wait') {
-      await redis.connect().catch(() => {});
-    }
-    if (redis && redis.status === 'ready') {
-      await redis.zadd(`user_sockets:${userId}`, Date.now(), socket.id);
-      await redis.expire(`user_sockets:${userId}`, 60);
-
-      heartbeatTimer = setInterval(async () => {
-        try {
-          await redis.zadd(`user_sockets:${userId}`, Date.now(), socket.id);
-        } catch {
-          // Ignore transient Redis errors during periodic heartbeat
+    (async () => {
+      try {
+        if (redis && redis.status === 'wait') {
+          await redis.connect().catch(() => {});
         }
-      }, 2000);
-    } else {
-      userSocketCounts.set(userId, (userSocketCounts.get(userId) || 0) + 1);
-    }
+        if (redis && redis.status === 'ready') {
+          await redis.zadd(`user_sockets:${userId}`, Date.now(), socket.id);
+          await redis.expire(`user_sockets:${userId}`, 60);
+
+          heartbeatTimer = setInterval(async () => {
+            try {
+              await redis.zadd(`user_sockets:${userId}`, Date.now(), socket.id);
+            } catch {
+              // Ignore transient Redis errors during periodic heartbeat
+            }
+          }, 2000);
+        } else {
+          userSocketCounts.set(userId, (userSocketCounts.get(userId) || 0) + 1);
+        }
+      } catch {
+        userSocketCounts.set(userId, (userSocketCounts.get(userId) || 0) + 1);
+      }
+    })();
 
     socket.on('conversation:join', async ({ conversationId }, callback) => {
       try {
@@ -326,11 +332,10 @@ export function initSocketServer(httpServer) {
       if (heartbeatTimer) clearInterval(heartbeatTimer);
       if (redis && redis.status === 'ready') {
         await redis.zrem(`user_sockets:${userId}`, socket.id).catch(() => {});
-      } else {
-        const current = userSocketCounts.get(userId) || 1;
-        if (current <= 1) userSocketCounts.delete(userId);
-        else userSocketCounts.set(userId, current - 1);
       }
+      const current = userSocketCounts.get(userId) || 1;
+      if (current <= 1) userSocketCounts.delete(userId);
+      else userSocketCounts.set(userId, current - 1);
       logger.debug({ userId, socketId: socket.id }, 'Socket disconnected');
     });
   });
@@ -370,7 +375,17 @@ export function emitToConversation(conversationId, event, data) {
  */
 export function disconnectUser(userId, reason = 'Account status changed') {
   if (!io) return;
-  io.in(`user:${userId}`).disconnectSockets(true);
+  try {
+    io.in(`user:${userId}`).disconnectSockets(true);
+  } catch {
+    // Ignore adapter broadcast errors
+  }
+  // Directly disconnect matching local sockets for instantaneous cutoff
+  for (const [, s] of io.of('/').sockets) {
+    if (s.user?.id === userId || s.user?.sub === userId) {
+      s.disconnect(true);
+    }
+  }
   logger.info({ userId, reason }, 'Forcefully disconnected user sockets mid-session');
 }
 
@@ -390,4 +405,12 @@ export async function closeSocketServer() {
     subClient.disconnect();
     subClient = null;
   }
+  userSocketCounts.clear();
+}
+
+/**
+ * Resets in-memory socket state (for testing).
+ */
+export function resetSocketState() {
+  userSocketCounts.clear();
 }

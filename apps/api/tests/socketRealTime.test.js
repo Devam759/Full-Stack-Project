@@ -13,6 +13,7 @@ import {
   initSocketServer,
   closeSocketServer,
   disconnectUser,
+  resetSocketState,
 } from '../src/sockets/socketServer.js';
 
 describe('Socket.IO Real-Time & Redis Adapter Integration (Phase 6)', () => {
@@ -41,6 +42,7 @@ describe('Socket.IO Real-Time & Redis Adapter Integration (Phase 6)', () => {
       maxRetriesPerRequest: null,
       lazyConnect: true,
     });
+    redisClient.on('error', () => {});
     await redisClient.connect().catch(() => {});
 
     const app = createApp();
@@ -127,6 +129,7 @@ describe('Socket.IO Real-Time & Redis Adapter Integration (Phase 6)', () => {
 
   beforeEach(async () => {
     await Block.deleteMany({});
+    resetSocketState();
     if (redisClient && redisClient.status === 'ready') {
       const keys = await redisClient.keys('user_sockets:*');
       if (keys.length > 0) await redisClient.del(...keys);
@@ -231,11 +234,16 @@ describe('Socket.IO Real-Time & Redis Adapter Integration (Phase 6)', () => {
     });
 
     it('refuses joining a conversation you are not a participant of', async () => {
-      await new Promise((resolve) => {
+      await new Promise((resolve, reject) => {
         const client = Client(`http://127.0.0.1:${serverPort}`, {
           auth: { token: outsiderToken },
           transports: ['websocket'],
           reconnection: false,
+        });
+
+        client.on('connect_error', (err) => {
+          client.disconnect();
+          reject(err);
         });
 
         client.on('connect', () => {
@@ -243,10 +251,15 @@ describe('Socket.IO Real-Time & Redis Adapter Integration (Phase 6)', () => {
             'conversation:join',
             { conversationId: conversation._id.toString() },
             (ack) => {
-              expect(ack.status).toBe('error');
-              expect(ack.error).toBe('FORBIDDEN_NOT_PARTICIPANT');
-              client.disconnect();
-              resolve();
+              try {
+                expect(ack.status).toBe('error');
+                expect(ack.error).toBe('FORBIDDEN_NOT_PARTICIPANT');
+                client.disconnect();
+                resolve();
+              } catch (e) {
+                client.disconnect();
+                reject(e);
+              }
             },
           );
         });
@@ -260,11 +273,16 @@ describe('Socket.IO Real-Time & Redis Adapter Integration (Phase 6)', () => {
         blockedId: activeUser._id,
       });
 
-      await new Promise((resolve) => {
+      await new Promise((resolve, reject) => {
         const client = Client(`http://127.0.0.1:${serverPort}`, {
           auth: { token: activeToken },
           transports: ['websocket'],
           reconnection: false,
+        });
+
+        client.on('connect_error', (err) => {
+          client.disconnect();
+          reject(err);
         });
 
         client.on('connect', () => {
@@ -272,10 +290,15 @@ describe('Socket.IO Real-Time & Redis Adapter Integration (Phase 6)', () => {
             'conversation:join',
             { conversationId: conversation._id.toString() },
             (ack) => {
-              expect(ack.status).toBe('error');
-              expect(ack.error).toBe('BLOCKED');
-              client.disconnect();
-              resolve();
+              try {
+                expect(ack.status).toBe('error');
+                expect(ack.error).toBe('BLOCKED');
+                client.disconnect();
+                resolve();
+              } catch (e) {
+                client.disconnect();
+                reject(e);
+              }
             },
           );
         });
@@ -392,16 +415,30 @@ describe('Socket.IO Real-Time & Redis Adapter Integration (Phase 6)', () => {
         });
       });
 
-      // Cleanup
-      for (const c of clients) c.disconnect();
+      // Cleanup: ensure all clients disconnect cleanly
+      await Promise.all(
+        clients.map(
+          (c) =>
+            new Promise((res) => {
+              if (!c.connected) return res();
+              c.on('disconnect', res);
+              c.disconnect();
+            }),
+        ),
+      );
     });
 
     it('rejects oversized socket payloads exceeding 10KB limit', async () => {
-      await new Promise((resolve) => {
+      await new Promise((resolve, reject) => {
         const client = Client(`http://127.0.0.1:${serverPort}`, {
           auth: { token: activeToken },
           transports: ['websocket'],
           reconnection: false,
+        });
+
+        client.on('connect_error', (err) => {
+          client.disconnect();
+          reject(err);
         });
 
         client.on('connect', () => {
@@ -417,10 +454,15 @@ describe('Socket.IO Real-Time & Redis Adapter Integration (Phase 6)', () => {
               },
             },
             (ack) => {
-              expect(ack.status).toBe('error');
-              expect(ack.error).toBe('PAYLOAD_TOO_LARGE');
-              client.disconnect();
-              resolve();
+              try {
+                expect(ack.status).toBe('error');
+                expect(ack.error).toBe('PAYLOAD_TOO_LARGE');
+                client.disconnect();
+                resolve();
+              } catch (e) {
+                client.disconnect();
+                reject(e);
+              }
             },
           );
         });
@@ -428,11 +470,16 @@ describe('Socket.IO Real-Time & Redis Adapter Integration (Phase 6)', () => {
     });
 
     it('validates per-event payload with Zod schema and returns structured acks', async () => {
-      await new Promise((resolve) => {
+      await new Promise((resolve, reject) => {
         const client = Client(`http://127.0.0.1:${serverPort}`, {
           auth: { token: activeToken },
           transports: ['websocket'],
           reconnection: false,
+        });
+
+        client.on('connect_error', (err) => {
+          client.disconnect();
+          reject(err);
         });
 
         client.on('connect', () => {
@@ -447,9 +494,14 @@ describe('Socket.IO Real-Time & Redis Adapter Integration (Phase 6)', () => {
               },
             },
             (ack) => {
-              expect(ack.status).toBe('error');
-              client.disconnect();
-              resolve();
+              try {
+                expect(ack.status).toBe('error');
+                client.disconnect();
+                resolve();
+              } catch (e) {
+                client.disconnect();
+                reject(e);
+              }
             },
           );
         });
