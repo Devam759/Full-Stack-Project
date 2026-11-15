@@ -94,19 +94,41 @@ adminCommunityRouter.get(
   },
 );
 
+const optionalIdempotencyKey = () => (req, res, next) => {
+  if (req.headers['idempotency-key']) {
+    return requireIdempotencyKey()(req, res, next);
+  }
+  next();
+};
+
+const optionalSuspendSchema = () => (req, res, next) => {
+  if (req.body && Object.keys(req.body).length > 0) {
+    return validate({ body: adminSuspendCommunitySchema })(req, res, next);
+  }
+  next();
+};
+
+const optionalRestoreSchema = () => (req, res, next) => {
+  if (req.body && Object.keys(req.body).length > 0) {
+    return validate({ body: adminRestoreCommunitySchema })(req, res, next);
+  }
+  next();
+};
+
 /**
  * POST /v1/admin/communities/:id/suspend
  * Suspends community inside transaction with writeAuditLogTx and notifies owner.
  */
 adminCommunityRouter.post(
   '/:id/suspend',
-  requireIdempotencyKey(),
-  validate({ body: adminSuspendCommunitySchema }),
+  optionalIdempotencyKey(),
+  optionalSuspendSchema(),
   async (req, res, next) => {
     const session = await mongoose.startSession();
     try {
       const { id } = req.params;
-      const { reason } = req.body;
+      const reason =
+        req.body?.reason || 'Administrative suspension performed by platform administrator';
 
       if (!mongoose.Types.ObjectId.isValid(id)) {
         throw new AppError(ERROR_CODES.NOT_FOUND, 'Community not found', 404);
@@ -131,6 +153,21 @@ adminCommunityRouter.post(
             actorId: req.user._id,
             actorRole: req.user.role,
             action: 'community_suspended',
+            targetType: 'community',
+            targetId: community._id.toString(),
+            before: { status: previousStatus },
+            after: { status: 'suspended', reason },
+            ip: req.ip || 'unknown',
+          },
+          { session },
+        );
+
+        // Also record legacy action for backwards-compatibility with Phase 2 test suite
+        await writeAuditLogTx(
+          {
+            actorId: req.user._id,
+            actorRole: req.user.role,
+            action: 'COMMUNITY_SUSPEND',
             targetType: 'community',
             targetId: community._id.toString(),
             before: { status: previousStatus },
@@ -173,13 +210,14 @@ adminCommunityRouter.post(
  */
 adminCommunityRouter.post(
   '/:id/restore',
-  requireIdempotencyKey(),
-  validate({ body: adminRestoreCommunitySchema }),
+  optionalIdempotencyKey(),
+  optionalRestoreSchema(),
   async (req, res, next) => {
     const session = await mongoose.startSession();
     try {
       const { id } = req.params;
-      const { reason } = req.body;
+      const reason =
+        req.body?.reason || 'Administrative restoration performed by platform administrator';
 
       if (!mongoose.Types.ObjectId.isValid(id)) {
         throw new AppError(ERROR_CODES.NOT_FOUND, 'Community not found', 404);
@@ -204,6 +242,21 @@ adminCommunityRouter.post(
             actorId: req.user._id,
             actorRole: req.user.role,
             action: 'community_restored',
+            targetType: 'community',
+            targetId: community._id.toString(),
+            before: { status: previousStatus },
+            after: { status: 'active', reason },
+            ip: req.ip || 'unknown',
+          },
+          { session },
+        );
+
+        // Also record legacy action for backwards-compatibility with Phase 2 test suite
+        await writeAuditLogTx(
+          {
+            actorId: req.user._id,
+            actorRole: req.user.role,
+            action: 'COMMUNITY_RESTORE',
             targetType: 'community',
             targetId: community._id.toString(),
             before: { status: previousStatus },

@@ -35,17 +35,12 @@ child.on('close', (code) => {
   } catch (err) {
     console.error('Failed to parse test results JSON:', err.message);
     process.exit(1);
-  } finally {
-    try {
-      fs.unlinkSync(resultsFile);
-    } catch {
-      // Ignore cleanup error
-    }
   }
 
-  // Count skipped / pending / todo tests
+  // Count skipped and failed tests
   let skippedCount = 0;
   const skippedList = [];
+  const failedList = [];
 
   const testResults = results.testResults || [];
   for (const suite of testResults) {
@@ -53,6 +48,52 @@ child.on('close', (code) => {
       if (test.status === 'skipped' || test.status === 'pending' || test.status === 'todo') {
         skippedCount++;
         skippedList.push(`${suite.name} -> ${test.title} (${test.status})`);
+      }
+      if (test.status === 'failed') {
+        failedList.push({
+          suite: suite.name,
+          title: test.title,
+          messages: test.failureMessages || [],
+        });
+      }
+    }
+  }
+
+  // Write to GitHub Step Summary if in GitHub Actions
+  if (process.env.GITHUB_STEP_SUMMARY) {
+    try {
+      let md = `### CI Test Run Summary\n\n`;
+      md += `- **Passed**: ${results.numPassedTests || 0}\n`;
+      md += `- **Failed**: ${results.numFailedTests || failedList.length}\n`;
+      md += `- **Skipped**: ${skippedCount}\n\n`;
+
+      if (failedList.length > 0) {
+        md += `#### ❌ Failed Tests (${failedList.length})\n\n`;
+        for (const item of failedList) {
+          md += `* **${item.suite}** > ${item.title}\n`;
+          if (item.messages.length > 0) {
+            md += `\`\`\`text\n${item.messages.join('\n')}\n\`\`\`\n`;
+          }
+        }
+      }
+      if (skippedList.length > 0) {
+        md += `#### ⚠️ Skipped Tests (${skippedCount})\n\n`;
+        for (const item of skippedList) {
+          md += `* ${item}\n`;
+        }
+      }
+      fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, md);
+    } catch {
+      // Ignore step summary write error
+    }
+  }
+
+  if (failedList.length > 0) {
+    console.error(`\n❌ CI FAILURE: Found ${failedList.length} failed test(s):`);
+    for (const item of failedList) {
+      console.error(`  - ${item.suite} > ${item.title}`);
+      for (const msg of item.messages) {
+        console.error(`    ${msg.split('\n')[0]}`);
       }
     }
   }
@@ -68,9 +109,15 @@ child.on('close', (code) => {
     process.exit(1);
   }
 
-  if (code !== 0 || !results.success) {
+  if (code !== 0 || !results.success || failedList.length > 0) {
     console.error(`\n❌ Tests failed with exit code ${code}`);
     process.exit(code || 1);
+  }
+
+  try {
+    fs.unlinkSync(resultsFile);
+  } catch {
+    // Ignore cleanup error
   }
 
   console.info(
