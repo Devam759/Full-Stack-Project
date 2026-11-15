@@ -124,4 +124,12 @@ Indexes: `(userId, readAt, createdAt: -1)`, `(createdAt)` with TTL index (expire
 
 ## ad_settings
 
-`placement, enabled, adsenseSlotId, pages[]`
+`placement` (unique), `enabled`, `adsenseSlotId`, `pages[]`.
+
+## system_settings
+
+`key` (unique), `value`, `updatedBy` (ref: users). Used for platform toggles like `ads.masterEnabled` and `ads.clientId`.
+
+## audit_logs
+
+`actorId, actorRole, action, targetType, targetId, before, after, ip, createdAt`. Append-only collection enforced via Mongoose middleware blocking updates and deletes.

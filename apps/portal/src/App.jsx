@@ -9,11 +9,29 @@ import {
   KeyRound,
   AlertCircle,
   LogOut,
+  TrendingUp,
+  Building,
+  UserCheck,
+  FileSpreadsheet,
+  FileText,
+  Megaphone,
 } from 'lucide-react';
 import DisputeQueue from './components/DisputeQueue.jsx';
 import CaseFileView from './components/CaseFileView.jsx';
 import ModerationQueue from './components/ModerationQueue.jsx';
 import UserLookup from './components/UserLookup.jsx';
+
+// Phase 9 Admin Portal Components
+import AdminOverview from './components/admin/AdminOverview.jsx';
+import AdminUsers from './components/admin/AdminUsers.jsx';
+import AdminCommunities from './components/admin/AdminCommunities.jsx';
+import AdminStaff from './components/admin/AdminStaff.jsx';
+import AdminAppeals from './components/admin/AdminAppeals.jsx';
+import AdminReconciliation from './components/admin/AdminReconciliation.jsx';
+import AdminAuditLog from './components/admin/AdminAuditLog.jsx';
+import AdminAds from './components/admin/AdminAds.jsx';
+
+import { maskEmail } from './utils.js';
 
 export function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -28,7 +46,7 @@ export function App() {
   const [token, setToken] = useState('');
 
   // Portal Navigation State
-  const [activeNav, setActiveNav] = useState('disputes'); // 'disputes' | 'moderation' | 'users' | 'settings'
+  const [activeNav, setActiveNav] = useState('disputes');
   const [selectedDisputeId, setSelectedDisputeId] = useState(null);
 
   const handleCredentialsSubmit = async (e) => {
@@ -82,8 +100,16 @@ export function App() {
         throw new Error(data?.message || data?.error?.message || 'Invalid authenticator code');
       }
       setIsAuthenticated(true);
-      setCurrentUser(data.user || { email, role: 'admin', name: 'Operations Team' });
+      const user = data.user || { email, role: 'admin', name: 'Operations Team' };
+      setCurrentUser(user);
       setToken(data.accessToken || '');
+
+      // Admins land on Overview; Care agents land on Disputes
+      if (user.role === 'admin') {
+        setActiveNav('admin-overview');
+      } else {
+        setActiveNav('disputes');
+      }
     } catch (err) {
       setError(err.message || 'Network error: failed to verify authenticator code');
     } finally {
@@ -104,6 +130,8 @@ export function App() {
     setActiveNav('disputes');
     setSelectedDisputeId(null);
   };
+
+  const isAdmin = currentUser?.role === 'admin';
 
   if (!isAuthenticated) {
     return (
@@ -130,7 +158,7 @@ export function App() {
             <form onSubmit={handleCredentialsSubmit} className="space-y-4">
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Admin Email
+                  Portal Email
                 </label>
                 <div className="relative">
                   <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
@@ -225,7 +253,9 @@ export function App() {
           </div>
           <div>
             <h1 className="font-bold text-base text-slate-900">BorrowLoop Operations Portal</h1>
-            <p className="text-xs text-slate-500">Customer Care & Administration</p>
+            <p className="text-xs text-slate-500">
+              {isAdmin ? 'Full Administrative Control' : 'Customer Care Workspace'}
+            </p>
           </div>
         </div>
 
@@ -233,9 +263,21 @@ export function App() {
           <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-200">
             Demo money
           </span>
-          <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800">
-            {currentUser?.email || 'Care Agent / Admin'} (2FA Verified)
+
+          {isAdmin ? (
+            <span className="px-2 py-0.5 rounded text-xs font-bold bg-purple-100 text-purple-800 border border-purple-200 uppercase tracking-wider">
+              Admin
+            </span>
+          ) : (
+            <span className="px-2 py-0.5 rounded text-xs font-semibold bg-blue-100 text-blue-800">
+              Care Agent
+            </span>
+          )}
+
+          <span className="text-xs font-mono font-medium text-slate-700">
+            {maskEmail(currentUser?.email)}
           </span>
+
           <button
             type="button"
             onClick={handleLogout}
@@ -248,70 +290,223 @@ export function App() {
       </header>
 
       <div className="flex-1 max-w-7xl w-full mx-auto p-6 grid grid-cols-1 md:grid-cols-4 gap-6">
-        <aside className="bg-white rounded-lg p-4 border border-slate-200 shadow-sm space-y-2 h-fit">
-          <button
-            type="button"
-            onClick={() => {
-              setActiveNav('disputes');
-              setSelectedDisputeId(null);
-            }}
-            className={`w-full flex items-center gap-3 px-3 py-2 rounded text-sm font-medium transition ${
-              activeNav === 'disputes'
-                ? 'text-teal-700 bg-teal-50'
-                : 'text-slate-600 hover:bg-slate-50'
-            }`}
-          >
-            <Scale className="w-4 h-4" />
-            <span>Disputes Queue</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setActiveNav('moderation');
-              setSelectedDisputeId(null);
-            }}
-            className={`w-full flex items-center gap-3 px-3 py-2 rounded text-sm font-medium transition ${
-              activeNav === 'moderation'
-                ? 'text-teal-700 bg-teal-50'
-                : 'text-slate-600 hover:bg-slate-50'
-            }`}
-          >
-            <ShieldAlert className="w-4 h-4" />
-            <span>Reports & Moderation</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setActiveNav('users');
-              setSelectedDisputeId(null);
-            }}
-            className={`w-full flex items-center gap-3 px-3 py-2 rounded text-sm font-medium transition ${
-              activeNav === 'users'
-                ? 'text-teal-700 bg-teal-50'
-                : 'text-slate-600 hover:bg-slate-50'
-            }`}
-          >
-            <Users className="w-4 h-4" />
-            <span>User Lookup</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setActiveNav('settings');
-              setSelectedDisputeId(null);
-            }}
-            className={`w-full flex items-center gap-3 px-3 py-2 rounded text-sm font-medium transition ${
-              activeNav === 'settings'
-                ? 'text-teal-700 bg-teal-50'
-                : 'text-slate-600 hover:bg-slate-50'
-            }`}
-          >
-            <Settings className="w-4 h-4" />
-            <span>System Status</span>
-          </button>
+        <aside className="bg-white rounded-lg p-4 border border-slate-200 shadow-sm space-y-4 h-fit">
+          {/* Admin Navigation Section (ONLY rendered for Admin users) */}
+          {isAdmin && (
+            <div className="space-y-1">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-3 block mb-1">
+                Administration
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveNav('admin-overview');
+                  setSelectedDisputeId(null);
+                }}
+                className={`w-full flex items-center gap-3 px-3 py-2 rounded text-xs font-medium transition ${
+                  activeNav === 'admin-overview'
+                    ? 'text-teal-700 bg-teal-50'
+                    : 'text-slate-600 hover:bg-slate-50'
+                }`}
+              >
+                <TrendingUp className="w-4 h-4" />
+                <span>Overview & Analytics</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveNav('admin-users');
+                  setSelectedDisputeId(null);
+                }}
+                className={`w-full flex items-center gap-3 px-3 py-2 rounded text-xs font-medium transition ${
+                  activeNav === 'admin-users'
+                    ? 'text-teal-700 bg-teal-50'
+                    : 'text-slate-600 hover:bg-slate-50'
+                }`}
+              >
+                <Users className="w-4 h-4" />
+                <span>User Moderation</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveNav('admin-communities');
+                  setSelectedDisputeId(null);
+                }}
+                className={`w-full flex items-center gap-3 px-3 py-2 rounded text-xs font-medium transition ${
+                  activeNav === 'admin-communities'
+                    ? 'text-teal-700 bg-teal-50'
+                    : 'text-slate-600 hover:bg-slate-50'
+                }`}
+              >
+                <Building className="w-4 h-4" />
+                <span>Communities</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveNav('admin-staff');
+                  setSelectedDisputeId(null);
+                }}
+                className={`w-full flex items-center gap-3 px-3 py-2 rounded text-xs font-medium transition ${
+                  activeNav === 'admin-staff'
+                    ? 'text-teal-700 bg-teal-50'
+                    : 'text-slate-600 hover:bg-slate-50'
+                }`}
+              >
+                <UserCheck className="w-4 h-4" />
+                <span>Staff Management</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveNav('admin-appeals');
+                  setSelectedDisputeId(null);
+                }}
+                className={`w-full flex items-center gap-3 px-3 py-2 rounded text-xs font-medium transition ${
+                  activeNav === 'admin-appeals'
+                    ? 'text-teal-700 bg-teal-50'
+                    : 'text-slate-600 hover:bg-slate-50'
+                }`}
+              >
+                <Scale className="w-4 h-4" />
+                <span>Dispute Appeals</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveNav('admin-reconciliation');
+                  setSelectedDisputeId(null);
+                }}
+                className={`w-full flex items-center gap-3 px-3 py-2 rounded text-xs font-medium transition ${
+                  activeNav === 'admin-reconciliation'
+                    ? 'text-teal-700 bg-teal-50'
+                    : 'text-slate-600 hover:bg-slate-50'
+                }`}
+              >
+                <FileSpreadsheet className="w-4 h-4" />
+                <span>Ledger Reconciliation</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveNav('admin-audit');
+                  setSelectedDisputeId(null);
+                }}
+                className={`w-full flex items-center gap-3 px-3 py-2 rounded text-xs font-medium transition ${
+                  activeNav === 'admin-audit'
+                    ? 'text-teal-700 bg-teal-50'
+                    : 'text-slate-600 hover:bg-slate-50'
+                }`}
+              >
+                <FileText className="w-4 h-4" />
+                <span>Audit Trail</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveNav('admin-ads');
+                  setSelectedDisputeId(null);
+                }}
+                className={`w-full flex items-center gap-3 px-3 py-2 rounded text-xs font-medium transition ${
+                  activeNav === 'admin-ads'
+                    ? 'text-teal-700 bg-teal-50'
+                    : 'text-slate-600 hover:bg-slate-50'
+                }`}
+              >
+                <Megaphone className="w-4 h-4" />
+                <span>Ads & Monetization</span>
+              </button>
+            </div>
+          )}
+
+          {/* Operations Section (Visible to both Care Agent & Admin) */}
+          <div className="space-y-1">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-3 block mb-1">
+              Operations Care
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                setActiveNav('disputes');
+                setSelectedDisputeId(null);
+              }}
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded text-xs font-medium transition ${
+                activeNav === 'disputes'
+                  ? 'text-teal-700 bg-teal-50'
+                  : 'text-slate-600 hover:bg-slate-50'
+              }`}
+            >
+              <Scale className="w-4 h-4" />
+              <span>Disputes Queue</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setActiveNav('moderation');
+                setSelectedDisputeId(null);
+              }}
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded text-xs font-medium transition ${
+                activeNav === 'moderation'
+                  ? 'text-teal-700 bg-teal-50'
+                  : 'text-slate-600 hover:bg-slate-50'
+              }`}
+            >
+              <ShieldAlert className="w-4 h-4" />
+              <span>Reports & Moderation</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setActiveNav('users');
+                setSelectedDisputeId(null);
+              }}
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded text-xs font-medium transition ${
+                activeNav === 'users'
+                  ? 'text-teal-700 bg-teal-50'
+                  : 'text-slate-600 hover:bg-slate-50'
+              }`}
+            >
+              <Users className="w-4 h-4" />
+              <span>User Lookup</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setActiveNav('settings');
+                setSelectedDisputeId(null);
+              }}
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded text-xs font-medium transition ${
+                activeNav === 'settings'
+                  ? 'text-teal-700 bg-teal-50'
+                  : 'text-slate-600 hover:bg-slate-50'
+              }`}
+            >
+              <Settings className="w-4 h-4" />
+              <span>System Status</span>
+            </button>
+          </div>
         </aside>
 
         <main className="md:col-span-3">
+          {/* Admin Routes (Guarded: Only rendered if isAdmin) */}
+          {isAdmin && activeNav === 'admin-overview' && <AdminOverview token={token} />}
+          {isAdmin && activeNav === 'admin-users' && <AdminUsers token={token} />}
+          {isAdmin && activeNav === 'admin-communities' && <AdminCommunities token={token} />}
+          {isAdmin && activeNav === 'admin-staff' && <AdminStaff token={token} />}
+          {isAdmin && activeNav === 'admin-appeals' && <AdminAppeals token={token} />}
+          {isAdmin && activeNav === 'admin-reconciliation' && <AdminReconciliation token={token} />}
+          {isAdmin && activeNav === 'admin-audit' && <AdminAuditLog token={token} />}
+          {isAdmin && activeNav === 'admin-ads' && <AdminAds token={token} />}
+
+          {/* Care Agent Routes */}
           {activeNav === 'disputes' && (
             <>
               {selectedDisputeId ? (
@@ -337,7 +532,7 @@ export function App() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
                 <div className="p-3 bg-slate-50 rounded border border-slate-200 space-y-1">
                   <span className="font-semibold text-slate-700">Environment</span>
-                  <p className="text-slate-900 font-mono">BorrowLoop v0.1.0 • Phase 8 Active</p>
+                  <p className="text-slate-900 font-mono">BorrowLoop v0.1.0 • Phase 9 Active</p>
                 </div>
                 <div className="p-3 bg-slate-50 rounded border border-slate-200 space-y-1">
                   <span className="font-semibold text-slate-700">Audit Trail Enforcement</span>

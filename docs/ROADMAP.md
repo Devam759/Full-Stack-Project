@@ -13,8 +13,8 @@ Build one phase at a time. Each phase ends with working, tested features on the 
 | 6     | Chat, map pin, real-time notifications, email, background jobs           | Messages and alerts arrive on two instances    | Completed |
 | 7     | QR handover and return, photos, ratings, trust score, strikes            | Complete borrow works end to end               | Completed |
 | 8     | Disputes, care portal, reports, moderation                               | Agent decides a case and money moves correctly | Completed |
-| 9     | Admin portal, analytics, audit log, ads placeholders and consent         | Admin sees live numbers                        | Next up   |
-| 10    | PWA, polish, accessibility, seed data, load test, API docs, deployment   | Public URL, load test results documented       | Planned   |
+| 9     | Admin portal, analytics, audit log, ads placeholders and consent         | Admin sees live numbers                        | Completed |
+| 10    | PWA, polish, accessibility, seed data, load test, API docs, deployment   | Public URL, load test results documented       | Next up   |
 
 ## Team of three (suggested split)
 
@@ -112,3 +112,38 @@ Build one phase at a time. Each phase ends with working, tested features on the 
 - **8h: Verification & Multi-Subsystem Audit**:
   - Invariants audit (`scripts/run-invariants-audit.js`) verified all 13 categories satisfied (zero paise imbalance, zero negative balances, zero duplicate refunds, zero orphaned locks, zero stuck events).
   - Monorepo linting (`npm run lint`) and code formatting (`npm run format:check`) 100% clean.
+
+---
+
+## Phase 9 Deliverables Summary (Completed)
+
+- **9a: Contracts, Config, Models & Security Fixes**:
+  - Added config constants for `ADMIN`, `APPEALS`, and `ADS` in `packages/shared/src/config.js` (`ALLOWED_SCREENS`, `RESTRICTED_SCREENS`, `CONSENT_MAX_AGE_DAYS: 180`, regexes for AdSense client ID and slot ID).
+  - Added new ledger operation type `appeal_reversal` and notifications (`appeal_decided`, `user_banned`, `user_unbanned`, `strike_reversed`, `community_suspended`, `community_restored`, `staff_invited`, `staff_removed`).
+  - Created `AdSetting.js` and `SystemSetting.js` Mongoose models; updated `Item.js` (`owner_banned`) and `Dispute.js` (`appeal` subdocument with `unrecoveredPaise`, `revisedDecision`, `originalSettlementSnapshot`).
+  - Pure calculation engine `computeDisputeSettlement` in `packages/shared/src/disputeSettlement.js` sharing dispute settlement maths across care decisions and admin appeals.
+  - Added security guards: append-only immutable Mongoose middleware on `AuditLog`, Redis-backed rate limiting and step deduplication for portal TOTP verification, and deterministic event keys for strike reversals.
+- **9b: Analytics, Audit Log & Reconciliation**:
+  - `GET /v1/admin/analytics/overview` utilizing single `$facet` aggregation pipelines, Redis 60s caching, Demo money labels, and derived metrics (dispute ratio, rented now, volume, deposits held, commission earned).
+  - `GET /v1/admin/audit-log` with cursor pagination, date/action filtering, before/after JSON diffs, and strict PII masking (`a***@g***.com`, zero coordinates/secrets).
+  - `GET /v1/admin/ledger/reconciliation` and `POST /v1/admin/ledger/reconciliation/run` with 5-minute cooldown guard (429) and BullMQ worker queue dispatch.
+- **9c: User Moderation, Communities & Care Agents**:
+  - User moderation: `GET /v1/admin/users`, `GET /v1/admin/users/:id` (with audit row), `POST /v1/admin/users/:id/ban` (refused with 409 `USER_HAS_ACTIVE_BOOKINGS` if user has active rentals; cancels pending/accepted bookings with borrower refunds, hides items with `owner_banned`, revokes refresh tokens, disconnects live sockets), `POST /v1/admin/users/:id/unban`, and `POST /v1/admin/users/:id/reverse-strike`.
+  - Community moderation: `GET /v1/admin/communities` with cursor pagination and zero owner email leaks, `POST .../suspend`, `POST .../restore`.
+  - Care agent lifecycle: `GET /v1/admin/agents`, `POST /v1/admin/agents` (promotes verified user, emails TOTP enrollment link without exposing secret to admin), `DELETE /v1/admin/agents/:id` (demotes agent, clears TOTP, resets assigned disputes to `opened`, protects last admin).
+- **9d: Dispute Appeals & Money Reversal**:
+  - `settleAppealDecision` in `ledgerService.js`: double-entry zero-sum reversal capping debits at available wallet balances, deducting unrecovered shortfalls from the highest gainer, and recording `unrecoveredPaise`.
+  - `GET /v1/admin/appeals` with cursor pagination, `POST /v1/admin/appeals/:id/preview` (computes live deltas and detects shortfalls), and `POST /v1/admin/appeals/:id/decide` (`upheld` vs `overturned`, enforcing conflict of interest 403, no-show refund rules, and mandatory `acknowledgeShortfall: true`).
+- **9e: Ads Configuration API**:
+  - Admin routes: `GET /v1/admin/ads`, `PATCH /v1/admin/ads/:placement` (validates slot format, invalidates cache, writes audit row), `POST /v1/admin/ads/master` (requires explicit `confirm: 'ENABLE_ADS'`, validates client ID format).
+  - Public cached route: `GET /v1/ads/config` (60s Redis cache; defaults to off, returning zero active placements when master is off).
+- **9f: Portal Admin Frontend**:
+  - Full suite of admin interfaces in `apps/portal/src/components/admin/`: `AdminOverview.jsx`, `AdminUsers.jsx`, `AdminCommunities.jsx`, `AdminStaff.jsx`, `AdminAppeals.jsx`, `AdminReconciliation.jsx`, `AdminAuditLog.jsx`, `AdminAds.jsx`.
+  - Strict role-based routing: care agents cannot access admin tabs (403); admins land on overview with admin badge and masked email.
+- **9g: User Web App Ads & Consent**:
+  - `adConsent.js`: 180-day consent expiry, accept, decline, and withdraw helper functions.
+  - UI components: `ConsentBanner.jsx`, `AdPreferencesModal.jsx`, and `AdSlot.jsx` (enforces screen allowlist/denylist, checks master enabled, injects AdSense script tag once lazily into `head`).
+  - Placements integrated on `ItemsBrowseScreen.jsx` (`home_banner`, `search_results`) and `ItemDetailScreen.jsx` (`item_sidebar`), with footer "Ad preferences" withdrawal link.
+- **9h: Verification, Invariants Audit & Sign-Off**:
+  - Invariants audit (`scripts/run-invariants-audit.js`) expanded to 14 invariant categories including Invariant 14: "Admin Audit Log Integrity" (verifies all admin audit records have an actor, reason, and valid target). All 14/14 satisfied with 0 mismatches.
+  - Full test suites pass across all packages and apps: 100% clean formatting and linting.

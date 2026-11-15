@@ -11,7 +11,13 @@
 
 import crypto from 'node:crypto';
 import mongoose from 'mongoose';
-import { BUSINESS_CONFIG, AppError, ERROR_CODES, assertPaise } from '@borrowloop/shared';
+import {
+  BUSINESS_CONFIG,
+  AppError,
+  ERROR_CODES,
+  assertPaise,
+  computeDisputeSettlement,
+} from '@borrowloop/shared';
 import Wallet from '../models/Wallet.js';
 import LedgerEntry from '../models/LedgerEntry.js';
 import LedgerOperation from '../models/LedgerOperation.js';
@@ -22,7 +28,7 @@ import Dispute from '../models/Dispute.js';
 import ItemDayLock from '../models/ItemDayLock.js';
 import { transitionBookingStatus } from './bookingTransitions.js';
 import { writeAuditLogTx } from './auditLogService.js';
-import { applyStrike } from './strikeService.js';
+import { applyStrike, reverseStrike } from './strikeService.js';
 import { recordTrustEvent, recompute } from './trustService.js';
 import { emitDomainEvent } from './eventStub.js';
 import { saveIdempotencyRecord } from '../common/idempotency.js';
@@ -1331,19 +1337,22 @@ export async function settleDisputeDecision({
     const borrowerId = booking.borrowerId;
     const lenderId = booking.lenderId;
 
-    // 4. Calculate payouts and commission
-    // Lender earnings subject to commission (15%): rent (if lender) + applied late charge
-    const lenderEarningsPaise =
-      (rentOutcome === 'lender' ? booking.rentPaise : 0) + appliedLateChargePaise;
-    const commissionPaise = Math.round(
-      (lenderEarningsPaise * BUSINESS_CONFIG.COMMISSION_BPS) / 10000,
-    );
-    const netLenderEarningsPaise = lenderEarningsPaise - commissionPaise;
-    // Deposit compensation to lender has 0% commission
-    const totalLenderPayoutPaise = netLenderEarningsPaise + depositToLenderPaise;
+    // 4. Calculate payouts and commission using pure calculation engine
+    const settlement = computeDisputeSettlement({
+      rentPaise: booking.rentPaise,
+      depositPaise: booking.depositPaise,
+      appliedLateChargePaise,
+      rentOutcome,
+      depositToLenderPaise,
+      depositToBorrowerPaise,
+      commissionBps: BUSINESS_CONFIG.COMMISSION_BPS,
+    });
 
-    const borrowerRentRefundPaise = rentOutcome === 'refund_borrower' ? booking.rentPaise : 0;
-    const totalBorrowerRefundPaise = borrowerRentRefundPaise + depositToBorrowerPaise;
+    const commissionPaise = settlement.commissionPaise;
+    const netLenderEarningsPaise = settlement.netLenderEarningsPaise;
+    const totalLenderPayoutPaise = settlement.lenderPayoutPaise;
+    const totalBorrowerRefundPaise = settlement.borrowerRefundPaise;
+    const borrowerRentRefundPaise = settlement.borrowerRentRefundPaise;
 
     // 5. Update Wallets
     await Wallet.getOrCreate(borrowerId, session);
@@ -1680,6 +1689,398 @@ export async function settleDisputeDecision({
   }
 }
 
+/**
+ * Settles a dispute appeal reversal (overturn).
+ * Reverses previous settlement deltas, respects available wallet balances,
+ * caps debits at available, charges shortfall to highest gaining party with acknowledgment,
+ * corrects penalties/strikes, and writes zero-sum double-entry ledger entries.
+ */
+export async function settleAppealDecision({
+  disputeId,
+  decidedById,
+  note,
+  revisedDecision,
+  acknowledgeShortfall = false,
+  idempotency = null,
+  meta = {},
+  throwOnAlreadyApplied = false,
+  session: externalSession = null,
+}) {
+  const execute = async (session) => {
+    const dispute = await Dispute.findById(disputeId).session(session);
+    if (!dispute) {
+      throw new AppError(ERROR_CODES.NOT_FOUND, 'Dispute not found', 404);
+    }
+
+    if (dispute.status !== 'appealed' || dispute.appeal?.status !== 'pending') {
+      throw new AppError(
+        ERROR_CODES.APPEAL_NOT_PENDING,
+        'Dispute does not have a pending appeal',
+        400,
+        { disputeId, status: dispute.status, appealStatus: dispute.appeal?.status },
+      );
+    }
+
+    const booking = await Booking.findById(dispute.bookingId).session(session);
+    if (!booking) {
+      throw new AppError(ERROR_CODES.BOOKING_NOT_FOUND, 'Booking not found', 404);
+    }
+
+    // Conflict of interest check
+    if (
+      dispute.decision?.decidedById &&
+      dispute.decision.decidedById.toString() === decidedById.toString()
+    ) {
+      throw new AppError(
+        ERROR_CODES.CONFLICT_OF_INTEREST,
+        'Admin who made the original care decision cannot decide the appeal',
+        403,
+      );
+    }
+    if (
+      booking.borrowerId.toString() === decidedById.toString() ||
+      booking.lenderId.toString() === decidedById.toString()
+    ) {
+      throw new AppError(
+        ERROR_CODES.CONFLICT_OF_INTEREST,
+        'Admin who is a booking participant cannot decide the appeal',
+        403,
+      );
+    }
+
+    // No-show full refund invariance
+    if (dispute.disputeReason === 'no_show') {
+      const isNoShowRefund =
+        revisedDecision.rentOutcome === 'refund_borrower' &&
+        revisedDecision.depositToLenderPaise === 0 &&
+        revisedDecision.depositToBorrowerPaise ===
+          booking.depositPaise - (dispute.decision?.appliedLateChargePaise || 0);
+      if (!isNoShowRefund) {
+        throw new AppError(
+          ERROR_CODES.DISPUTE_DECISION_INVALID,
+          'No-show dispute requires full refund of rent and deposit to borrower',
+          400,
+        );
+      }
+    }
+
+    // Record LedgerOperation for appeal reversal (idempotency guard)
+    const op = await recordLedgerOperation({
+      session,
+      bookingId: booking._id,
+      operationType: 'appeal_reversal',
+      opRef: dispute._id.toString(),
+      meta,
+      throwOnAlreadyApplied,
+    });
+    if (op.alreadyApplied) {
+      return op;
+    }
+
+    // Compute original and revised distributions using pure computeDisputeSettlement
+    const original = computeDisputeSettlement({
+      rentPaise: booking.rentPaise,
+      depositPaise: booking.depositPaise,
+      appliedLateChargePaise: dispute.decision?.appliedLateChargePaise || 0,
+      rentOutcome: dispute.decision?.rentOutcome || 'lender',
+      depositToLenderPaise: dispute.decision?.depositToLenderPaise || 0,
+      depositToBorrowerPaise: dispute.decision?.depositToBorrowerPaise || 0,
+      commissionBps: booking.commissionBps,
+    });
+
+    const revised = computeDisputeSettlement({
+      rentPaise: booking.rentPaise,
+      depositPaise: booking.depositPaise,
+      appliedLateChargePaise: dispute.decision?.appliedLateChargePaise || 0,
+      rentOutcome: revisedDecision.rentOutcome,
+      depositToLenderPaise: revisedDecision.depositToLenderPaise,
+      depositToBorrowerPaise: revisedDecision.depositToBorrowerPaise,
+      commissionBps: booking.commissionBps,
+    });
+
+    const deltaBorrower = revised.borrowerAvailablePaise - original.borrowerAvailablePaise;
+    const deltaLender = revised.lenderAvailablePaise - original.lenderAvailablePaise;
+    const deltaPlatform = revised.commissionPaise - original.commissionPaise;
+
+    // Load wallets inside transaction
+    const borrowerWallet = await Wallet.findOne({ userId: booking.borrowerId }).session(session);
+    const lenderWallet = await Wallet.findOne({ userId: booking.lenderId }).session(session);
+
+    let actualDebitBorrower = 0;
+    let unrecoveredFromBorrower = 0;
+    if (deltaBorrower < 0) {
+      const requiredDebit = -deltaBorrower;
+      actualDebitBorrower = Math.min(requiredDebit, borrowerWallet.availablePaise);
+      unrecoveredFromBorrower = requiredDebit - actualDebitBorrower;
+    }
+
+    let actualDebitLender = 0;
+    let unrecoveredFromLender = 0;
+    if (deltaLender < 0) {
+      const requiredDebit = -deltaLender;
+      actualDebitLender = Math.min(requiredDebit, lenderWallet.availablePaise);
+      unrecoveredFromLender = requiredDebit - actualDebitLender;
+    }
+
+    const totalUnrecoveredPaise = unrecoveredFromBorrower + unrecoveredFromLender;
+
+    if (totalUnrecoveredPaise > 0 && acknowledgeShortfall !== true) {
+      throw new AppError(
+        ERROR_CODES.APPEAL_SHORTFALL_NOT_ACKNOWLEDGED,
+        `Appeal reversal incurs an unrecovered shortfall of ${totalUnrecoveredPaise} paise which must be acknowledged`,
+        400,
+        { unrecoveredPaise: totalUnrecoveredPaise },
+      );
+    }
+
+    const gainBorrower = deltaBorrower > 0 ? deltaBorrower : 0;
+    const gainLender = deltaLender > 0 ? deltaLender : 0;
+
+    let effectiveDeltaBorrower = deltaBorrower;
+    let effectiveDeltaLender = deltaLender;
+
+    if (totalUnrecoveredPaise > 0) {
+      if (gainBorrower >= gainLender) {
+        effectiveDeltaBorrower = Math.max(0, deltaBorrower - totalUnrecoveredPaise);
+        effectiveDeltaLender = -actualDebitLender;
+      } else {
+        effectiveDeltaLender = Math.max(0, deltaLender - totalUnrecoveredPaise);
+        effectiveDeltaBorrower = -actualDebitBorrower;
+      }
+    }
+    const effectiveDeltaPlatform = deltaPlatform;
+
+    // Strict zero-sum ledger invariant validation
+    if (effectiveDeltaBorrower + effectiveDeltaLender + effectiveDeltaPlatform !== 0) {
+      throw new AppError(
+        ERROR_CODES.LEDGER_INVARIANT_VIOLATION,
+        'Appeal reversal delta violates zero-sum ledger invariant',
+        500,
+      );
+    }
+
+    const txnId = `txn_appeal_rev_${dispute._id}_${Date.now()}`;
+    const now = new Date();
+    const entries = [];
+
+    if (effectiveDeltaBorrower !== 0) {
+      borrowerWallet.availablePaise += effectiveDeltaBorrower;
+      await borrowerWallet.save({ session });
+      entries.push({
+        txnId,
+        bookingId: booking._id,
+        account: 'available',
+        userId: booking.borrowerId,
+        amountPaise: effectiveDeltaBorrower,
+        balanceAfterPaise: borrowerWallet.availablePaise,
+        type: 'appeal_reversal',
+        idempotencyKey: idempotency?.key || null,
+        meta: { disputeId: dispute._id, note },
+        createdAt: now,
+      });
+    }
+
+    if (effectiveDeltaLender !== 0) {
+      lenderWallet.availablePaise += effectiveDeltaLender;
+      await lenderWallet.save({ session });
+      entries.push({
+        txnId,
+        bookingId: booking._id,
+        account: 'available',
+        userId: booking.lenderId,
+        amountPaise: effectiveDeltaLender,
+        balanceAfterPaise: lenderWallet.availablePaise,
+        type: 'appeal_reversal',
+        idempotencyKey: idempotency?.key || null,
+        meta: { disputeId: dispute._id, note },
+        createdAt: now,
+      });
+    }
+
+    if (effectiveDeltaPlatform !== 0) {
+      entries.push({
+        txnId,
+        bookingId: booking._id,
+        account: 'platform_revenue',
+        userId: null,
+        amountPaise: effectiveDeltaPlatform,
+        balanceAfterPaise: null,
+        type: 'appeal_reversal',
+        idempotencyKey: idempotency?.key || null,
+        meta: { disputeId: dispute._id, note },
+        createdAt: now,
+      });
+    }
+
+    if (entries.length > 0) {
+      assertZeroSum(entries);
+      await LedgerEntry.insertMany(entries, { session });
+    }
+
+    // Penalty correction on overturn
+    const originalFaultUserId = dispute.decision?.faultUserId;
+    const originalPenaltyKind = dispute.decision?.penaltyKind;
+    const originalBorrowerAction = dispute.decision?.borrowerAccountAction;
+
+    if (originalFaultUserId) {
+      if (originalPenaltyKind === 'lost_dispute') {
+        await reverseStrike({
+          userId: originalFaultUserId,
+          reason: 'appeal_overturn',
+          session,
+          eventKey: `strike_rev_appeal_${dispute._id}_${originalFaultUserId}`,
+        });
+        await recordTrustEvent({
+          userId: originalFaultUserId,
+          type: 'penalty_reversed',
+          bookingId: booking._id,
+          eventKey: `trust_rev_lost_${dispute._id}`,
+          meta: { reverses: `trust_lost_dispute_${dispute._id}`, disputeId: dispute._id },
+          session,
+        });
+        await recompute(originalFaultUserId, session);
+      } else if (originalPenaltyKind === 'rejected_damage_claim') {
+        await recordTrustEvent({
+          userId: originalFaultUserId,
+          type: 'penalty_reversed',
+          bookingId: booking._id,
+          eventKey: `trust_rev_rej_${dispute._id}`,
+          meta: { reverses: `trust_rej_claim_${dispute._id}`, disputeId: dispute._id },
+          session,
+        });
+        await recompute(originalFaultUserId, session);
+      } else if (originalPenaltyKind === 'no_show') {
+        await recordTrustEvent({
+          userId: originalFaultUserId,
+          type: 'penalty_reversed',
+          bookingId: booking._id,
+          eventKey: `trust_rev_noshow_${dispute._id}`,
+          meta: { reverses: `trust_no_show_${dispute._id}`, disputeId: dispute._id },
+          session,
+        });
+        await recompute(originalFaultUserId, session);
+      }
+    }
+
+    if (originalBorrowerAction === 'strike' && originalPenaltyKind !== 'lost_dispute') {
+      await reverseStrike({
+        userId: booking.borrowerId,
+        reason: 'appeal_overturn',
+        session,
+        eventKey: `strike_rev_appeal_${dispute._id}_${booking.borrowerId}`,
+      });
+    }
+
+    // Apply revised penalties
+    const revisedFaultUserId = revisedDecision.faultUserId;
+    const revisedPenaltyKind = revisedDecision.penaltyKind;
+    const revisedBorrowerAction = revisedDecision.borrowerAccountAction;
+
+    if (revisedFaultUserId) {
+      const faultStr = revisedFaultUserId.toString();
+      if (revisedPenaltyKind === 'lost_dispute') {
+        await applyStrike({
+          userId: revisedFaultUserId,
+          reason: 'lost_dispute',
+          meta: { disputeId: dispute._id },
+          eventKey: `strike_revised_${dispute._id}_${faultStr}`,
+          session,
+        });
+        await recordTrustEvent({
+          userId: revisedFaultUserId,
+          type: 'lost_dispute',
+          bookingId: booking._id,
+          eventKey: `trust_revised_lost_${dispute._id}`,
+          meta: { disputeId: dispute._id },
+          session,
+        });
+        await recompute(revisedFaultUserId, session);
+      } else if (revisedPenaltyKind === 'rejected_damage_claim') {
+        await recordTrustEvent({
+          userId: revisedFaultUserId,
+          type: 'rejected_damage_claim',
+          bookingId: booking._id,
+          eventKey: `trust_revised_rej_${dispute._id}`,
+          meta: { disputeId: dispute._id },
+          session,
+        });
+        await recompute(revisedFaultUserId, session);
+      } else if (revisedPenaltyKind === 'no_show') {
+        await recordTrustEvent({
+          userId: revisedFaultUserId,
+          type: 'no_show',
+          bookingId: booking._id,
+          eventKey: `trust_revised_noshow_${dispute._id}`,
+          meta: { disputeId: dispute._id },
+          session,
+        });
+        await recompute(revisedFaultUserId, session);
+      }
+    }
+
+    if (revisedBorrowerAction === 'unfreeze') {
+      await User.updateOne(
+        { _id: booking.borrowerId, status: 'frozen' },
+        { $set: { status: 'active' } },
+      ).session(session);
+    } else if (revisedBorrowerAction === 'strike' && revisedPenaltyKind !== 'lost_dispute') {
+      await applyStrike({
+        userId: booking.borrowerId,
+        reason: 'dispute_decision',
+        meta: { disputeId: dispute._id },
+        eventKey: `strike_revised_borrower_${dispute._id}`,
+        session,
+      });
+    }
+
+    // Update dispute appeal status
+    dispute.status = 'closed';
+    dispute.appeal.status = 'overturned';
+    dispute.appeal.decidedById = decidedById;
+    dispute.appeal.decidedAt = now;
+    dispute.appeal.note = note;
+    dispute.appeal.revisedDecision = revisedDecision;
+    dispute.appeal.originalSettlementSnapshot = original;
+    dispute.appeal.unrecoveredPaise = totalUnrecoveredPaise;
+    await dispute.save({ session });
+
+    return {
+      dispute,
+      deltas: {
+        borrower: effectiveDeltaBorrower,
+        lender: effectiveDeltaLender,
+        platform: effectiveDeltaPlatform,
+      },
+      unrecoveredPaise: totalUnrecoveredPaise,
+    };
+  };
+
+  try {
+    if (externalSession) {
+      return await execute(externalSession);
+    }
+    return await runInTransactionWithRetry(execute);
+  } catch (err) {
+    if (isLedgerOpDuplicateError(err)) {
+      if (throwOnAlreadyApplied) {
+        throw new AppError(
+          ERROR_CODES.OPERATION_ALREADY_APPLIED,
+          `Operation appeal_reversal has already been applied for dispute ${disputeId}`,
+          409,
+          { disputeId, operationType: 'appeal_reversal' },
+        );
+      }
+      return {
+        alreadyApplied: true,
+        status: 'already_applied',
+        disputeId,
+        operationType: 'appeal_reversal',
+      };
+    }
+    throw err;
+  }
+}
+
 export default {
   assertUserEligibleForWallet,
   runInTransactionWithRetry,
@@ -1691,4 +2092,5 @@ export default {
   refundCancelledBooking,
   settleBookingCompletion,
   settleDisputeDecision,
+  settleAppealDecision,
 };

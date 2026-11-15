@@ -23,6 +23,8 @@ import { BookingDetailScreen } from './screens/BookingDetailScreen.jsx';
 import { DisputeDetailScreen } from './screens/DisputeDetailScreen.jsx';
 import { ForgotPasswordScreen } from './screens/ForgotPasswordScreen.jsx';
 import { ResetPasswordScreen } from './screens/ResetPasswordScreen.jsx';
+import ConsentBanner from './components/ConsentBanner.jsx';
+import AdPreferencesModal from './components/AdPreferencesModal.jsx';
 
 function MainAppShell() {
   const { user, requiresPhoto, setRequiresPhoto } = useAuth();
@@ -77,6 +79,7 @@ function MainAppShell() {
   const [selectedItemId, setSelectedItemId] = useState(null);
   const [selectedBookingId, setSelectedBookingId] = useState(getInitialBookingId);
   const [selectedDisputeId, setSelectedDisputeId] = useState(getInitialDisputeId);
+  const [showAdPreferences, setShowAdPreferences] = useState(false);
 
   // Sync with browser navigation
   useEffect(() => {
@@ -364,7 +367,22 @@ function MainAppShell() {
         )}
 
         {currentScreen === 'wallet' && <WalletScreen />}
+
+        {/* Footer with Ad Preferences Link */}
+        <footer className="py-4 text-center text-xs text-text-muted pb-20">
+          <button
+            type="button"
+            onClick={() => setShowAdPreferences(true)}
+            className="hover:text-primary transition underline underline-offset-2"
+          >
+            Ad preferences
+          </button>
+        </footer>
       </main>
+
+      {/* Ad Consent Banner & Preferences Modal */}
+      <ConsentBanner onOpenPreferences={() => setShowAdPreferences(true)} />
+      <AdPreferencesModal isOpen={showAdPreferences} onClose={() => setShowAdPreferences(false)} />
 
       {/* Mobile Bottom Navigation Bar */}
       <nav className="fixed bottom-0 left-0 right-0 z-50 bg-surface border-t border-slate-200 max-w-lg mx-auto flex items-center justify-around py-2 px-3 shadow-lg">

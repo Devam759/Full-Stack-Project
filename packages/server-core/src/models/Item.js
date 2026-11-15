@@ -109,7 +109,7 @@ const itemSchema = new mongoose.Schema(
     },
     hiddenReason: {
       type: String,
-      enum: ['auto_reports', 'care_agent', 'admin', null],
+      enum: ['auto_reports', 'care_agent', 'admin', 'owner_banned', null],
       default: null,
     },
     reportCount: {

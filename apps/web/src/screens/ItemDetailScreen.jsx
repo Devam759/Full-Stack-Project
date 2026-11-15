@@ -13,6 +13,7 @@ import {
 import { formatPaise, BUSINESS_CONFIG } from '@borrowloop/shared';
 import TrustBadge from '../components/TrustBadge.jsx';
 import ReportModal from '../components/ReportModal.jsx';
+import AdSlot from '../components/AdSlot.jsx';
 
 export function ItemDetailScreen({ itemId, onBack, onRequestBooking }) {
   const [item, setItem] = useState(null);
@@ -374,6 +375,9 @@ export function ItemDetailScreen({ itemId, onBack, onRequestBooking }) {
           </div>
         </div>
       </div>
+
+      {/* Item Sidebar / Detail Ad Placement */}
+      <AdSlot placement="item_sidebar" currentScreen="item-detail" />
 
       {/* Floating Bottom Action Bar */}
       <div className="fixed bottom-14 left-0 right-0 max-w-lg mx-auto p-3 bg-surface/90 backdrop-blur-md border-t border-slate-200 z-40 flex items-center justify-between">

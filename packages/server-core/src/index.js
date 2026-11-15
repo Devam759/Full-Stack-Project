@@ -30,6 +30,8 @@ export { default as TrustEvent } from './models/TrustEvent.js';
 export { default as Rating } from './models/Rating.js';
 export { default as Dispute } from './models/Dispute.js';
 export { default as Report } from './models/Report.js';
+export { default as AdSetting } from './models/AdSetting.js';
+export { default as SystemSetting } from './models/SystemSetting.js';
 
 // Common
 export * from './common/dates.js';

@@ -9,6 +9,7 @@ import {
   Conversation,
   Message,
   Notification,
+  AuditLog,
 } from '@borrowloop/server-core';
 
 const MONGODB_URI =
@@ -232,7 +233,28 @@ export async function verifyLiveInvariants(overrideUri) {
     pass: stuckEvents.length === 0,
   };
 
-  console.info('\n--- POST-RUN 13-CATEGORY INVARIANTS AUDIT (PHASE 4, 5 & 6) ---');
+  // 14. Phase 9: Admin Audit Log Integrity (every admin audit log has an actor, reason, and valid target)
+  const allAuditLogs = await AuditLog.find().lean();
+  let invalidAuditLogs = [];
+  for (const log of allAuditLogs) {
+    const hasActor = Boolean(log.actorId && log.actorRole);
+    const hasReason = Boolean(
+      (log.after && typeof log.after.reason === 'string' && log.after.reason.trim().length >= 10) ||
+      (log.before && typeof log.before.reason === 'string') ||
+      (typeof log.reason === 'string' && log.reason.trim().length >= 10),
+    );
+    const hasValidTarget = Boolean(log.targetType && log.targetId);
+    if (!hasActor || !hasReason || !hasValidTarget) {
+      invalidAuditLogs.push({ id: log._id, hasActor, hasReason, hasValidTarget });
+    }
+  }
+  results.invalidAuditLogsCount = {
+    totalAuditLogs: allAuditLogs.length,
+    invalidCount: invalidAuditLogs.length,
+    pass: invalidAuditLogs.length === 0,
+  };
+
+  console.info('\n--- POST-RUN 14-CATEGORY INVARIANTS AUDIT (PHASE 4, 5, 6 & 9) ---');
   console.info(
     JSON.stringify(
       {
@@ -288,6 +310,10 @@ export async function verifyLiveInvariants(overrideUri) {
           Status: results.stuckDomainEventsCount.pass ? 'PASS' : 'FAIL',
           Details: `Count: ${results.stuckDomainEventsCount.count}`,
         },
+        '14. Admin Audit Log Integrity (actor, reason, target)': {
+          Status: results.invalidAuditLogsCount.pass ? 'PASS' : 'FAIL',
+          Details: `Total logs: ${results.invalidAuditLogsCount.totalAuditLogs}, Invalid: ${results.invalidAuditLogsCount.invalidCount}`,
+        },
       },
       null,
       2,
@@ -297,7 +323,7 @@ export async function verifyLiveInvariants(overrideUri) {
   await mongoose.disconnect();
 
   const allPassed = Object.values(results).every((r) => r.pass);
-  console.info(`\nALL 13 INVARIANTS SATISFIED: ${allPassed ? 'YES' : 'NO'}`);
+  console.info(`\nALL 14 INVARIANTS SATISFIED: ${allPassed ? 'YES' : 'NO'}`);
   return allPassed;
 }
 

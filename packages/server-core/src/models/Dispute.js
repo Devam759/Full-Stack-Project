@@ -150,8 +150,21 @@ const appealSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ['pending', 'upheld', 'overturned', 'decided', 'dismissed'],
+      enum: ['pending', 'upheld', 'overturned'],
       default: 'pending',
+    },
+    unrecoveredPaise: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    revisedDecision: {
+      type: mongoose.Schema.Types.Mixed,
+      default: null,
+    },
+    originalSettlementSnapshot: {
+      type: mongoose.Schema.Types.Mixed,
+      default: null,
     },
     decidedById: {
       type: mongoose.Schema.Types.ObjectId,

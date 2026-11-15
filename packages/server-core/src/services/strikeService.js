@@ -142,17 +142,38 @@ export async function applyStrike({
 
 /**
  * Reverses a strike (used in dispute resolutions or admin corrections).
+ * Accepts a deterministic eventKey for idempotency and refuses when strikes are already 0.
  * Only restores status to 'active' if the user was currently 'banned', preventing unfreezing frozen users.
  */
-export async function reverseStrike({ userId, reason = 'Strike reversed', session = null }) {
+export async function reverseStrike({
+  userId,
+  reason = 'Strike reversed',
+  session = null,
+  eventKey = null,
+}) {
   const user = await User.findById(userId).session(session);
   if (!user) {
     throw new AppError(ERROR_CODES.USER_NOT_FOUND, 'User not found', 404);
   }
 
   const previousStrikes = user.strikes || 0;
+  if (previousStrikes <= 0) {
+    throw new AppError(ERROR_CODES.BAD_REQUEST, 'User has 0 strikes; cannot reverse strike', 400);
+  }
+
+  const finalEventKey = eventKey || `strike_reversed_${user._id}_${previousStrikes}_${Date.now()}`;
+  if (eventKey) {
+    const existing = await TrustEvent.findOne({ eventKey: finalEventKey }).session(session);
+    if (existing) {
+      return {
+        strikes: user.strikes || 0,
+        banUntil: user.banUntil,
+        status: user.status,
+      };
+    }
+  }
+
   const newStrikes = Math.max(0, previousStrikes - 1);
-  const now = new Date();
 
   let status = user.status;
   let banUntil = user.banUntil;
@@ -174,7 +195,7 @@ export async function reverseStrike({ userId, reason = 'Strike reversed', sessio
   await recordTrustEvent({
     userId: user._id,
     type: 'strike_reversed',
-    eventKey: `strike_reversed_${user._id}_${newStrikes}_${now.getTime()}`,
+    eventKey: finalEventKey,
     meta: { previousStrikes, newStrikes, reason },
     session,
   });

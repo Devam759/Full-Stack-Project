@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Search, Plus, Filter, MapPin, Tag } from 'lucide-react';
 import { formatPaise, BUSINESS_CONFIG } from '@borrowloop/shared';
+import AdSlot from '../components/AdSlot.jsx';
 
 const CATEGORIES = [
   { id: '', label: 'All Items' },
@@ -108,6 +109,9 @@ export function ItemsBrowseScreen({ onSelectItem, onCreateItem }) {
           <span>List Item</span>
         </button>
       </div>
+
+      {/* Top Home Banner Ad Placement */}
+      <AdSlot placement="home_banner" currentScreen="items" />
 
       {/* Search Input Bar */}
       <div className="relative">
@@ -225,6 +229,9 @@ export function ItemsBrowseScreen({ onSelectItem, onCreateItem }) {
           </button>
         </div>
       )}
+
+      {/* Search Results Ad Placement */}
+      <AdSlot placement="search_results" currentScreen="items" />
 
       {/* Items Cards Grid */}
       {!loading && !error && items.length > 0 && (

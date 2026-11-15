@@ -20,6 +20,12 @@
   - Money decisions run `writeAuditLogTx` inside the MongoDB transaction alongside ledger operations, ensuring no monetary settlement commits without an audit record.
   - Privacy and sanitization: Responses and audit records never log or expose raw passwords, TOTP secrets, full email addresses, or exact GPS coordinates.
   - Care agents cannot ban users; ban and unban actions remain strictly restricted to administrators.
+- **Admin Portal Access & Audit Immutability (Phase 9)**:
+  - Admin routes enforce `authenticate(TOKEN_AUDIENCES.PORTAL)` and `requireRole('admin')`. Care agents are denied access with 403 `FORBIDDEN`.
+  - Immutable Audit Logs: `AuditLog` documents are strictly append-only. Mongoose middleware intercepts and blocks any update (`updateOne`, `findOneAndUpdate`, etc.) or delete (`deleteOne`, `deleteMany`, etc.) operations with `INTERNAL_ERROR`.
+  - Recommended DB Role: In production MongoDB Atlas deployment, the application user should ideally be granted a role without `update` or `delete` privileges on the `audit_logs` and `ledger_entries` collections.
+  - Multi-Instance TOTP Security: Portal authentication tracks TOTP attempts and verified time-steps in Redis (`totp:attempts:<userId>` and `totp:step:<userId>`), preventing multi-instance brute force and token replay across clusters.
+  - Appeal Conflict of Interest: An admin who resolved the initial care dispute, or who is a counterparty in the booking, is strictly prohibited from deciding the appeal (`CONFLICT_OF_INTEREST`).
 
 ## Real-time & WebSocket Authorisation Rules
 

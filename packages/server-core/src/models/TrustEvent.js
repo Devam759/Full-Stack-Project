@@ -25,6 +25,7 @@ const trustEventSchema = new mongoose.Schema(
         'rejected_damage_claim',
         'strike',
         'strike_reversed',
+        'penalty_reversed',
       ],
       required: true,
     },

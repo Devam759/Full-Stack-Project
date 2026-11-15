@@ -103,6 +103,29 @@ A "lost dispute" means a care agent ruled against the user's conduct.
   - `none`: No trust penalty or strike.
 - Care authority: Care agents cannot ban. Permitted actions: `dismiss`, `hide_item`, `remove_item`, `restore_item`, `warn_user`, `strike_user`. Permanent ban/unban is admin only (Phase 9).
 - Appeals: One appeal per dispute submitted by either participant within `APPEAL_WINDOW_DAYS` (7 days) of decision. Settlement remains in force until Phase 9 admin review.
+- Appeal reversal and shortfall (Phase 9):
+  - A reversal moves money only between available balances and `platform_revenue`.
+  - Every wallet debit is strictly capped at that wallet's available balance.
+  - Any unrecoverable amount is deducted from the credit of the party who would have gained the most, recorded on the dispute as `unrecoveredPaise`. The admin must pass `acknowledgeShortfall: true` when `unrecoveredPaise > 0`.
+  - Wallet `pendingPaise` remains strictly locked at 0 (Phase 4 invariant).
+- Appeal decisions:
+  - `upheld`: Care decision stands, no money moves, dispute closes.
+  - `overturned`: Admin sends revised decision with identical deposit-split validation. `no_show` disputes must retain the full-refund rule (only fault and penalty can change).
+  - Conflict of interest: The admin who made the original care decision or is a counterparty in the booking cannot decide the appeal (`CONFLICT_OF_INTEREST`).
+  - Penalty correction on overturn: Original penalties are reversed via `penalty_reversed` append-only trust events and the original strike reversed, then revised penalties and strikes applied with deterministic keys.
+- Administration & Staff Management (Phase 9):
+  - Banning: Only admins ban and unban. Admins cannot ban themselves, other admins, or care agents.
+  - Banning is refused (`USER_HAS_ACTIVE_BOOKINGS`) if the user has bookings in `picked_up`, `returned`, or `disputed`.
+  - On ban: pending (requested) bookings are cancelled; accepted bookings are cancelled with full refund to borrower; items are hidden with `hiddenReason: 'owner_banned'` and `hiddenFromStatus`; refresh tokens revoked; sockets disconnected.
+  - Unban restores owner_banned items only. Strikes are not reset on unban.
+  - Care agents: Admin promotes active, email-verified users. TOTP enrollment link is emailed and never echoed. Demotion resets role to user, clears TOTP, revokes tokens, and returns assigned open disputes to `opened`.
+  - The last admin cannot be demoted or removed.
+- Analytics definitions (Phase 9):
+  - Volume: Sum of `rentPaise` on `completed` bookings.
+  - Deposits held: Sum of all `frozenPaise` across wallets.
+  - Commission earned: Ledger sum of all `platform_revenue` entries (including appeal reversals).
+  - Dispute ratio: Total disputes divided by bookings that reached `picked_up`.
+  - Rented items: Derived count from bookings in `picked_up` state.
 
 ## Moderation
 
@@ -116,8 +139,9 @@ A "lost dispute" means a care agent ruled against the user's conduct.
 - One account per person. New accounts are rate limited.
 - A user cannot delete an account while bookings are open or money is frozen.
 
-## Ads
+## Ads (Phase 9)
 
-- Ads are placed in listing feeds and on public pages only.
-- No ads on wallet, chat, dispute, portal or settings pages.
-- Ads stay switched off until the public launch.
+- Master switch is off by default; enabling requires explicit `confirm: 'ENABLE_ADS'`.
+- Ads render only if: master switch is ON, specific placement is active, user accepted cookie/ad consent, and current screen is in `ALLOWED_SCREENS` (`items`, `item-detail`).
+- Strict denylist (`RESTRICTED_SCREENS`): suppressed on wallet, bookings, chat, disputes, notifications, profile, settings, onboarding, auth, or portal screens.
+- Declining consent completely suppresses ad scripts. Consent re-prompted after 180 days. Withdrawal link provided in footer.

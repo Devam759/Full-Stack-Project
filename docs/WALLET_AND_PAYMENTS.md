@@ -45,6 +45,7 @@ The platform has `platform_revenue` and `demo_funding` accounts.
 - `dispute_settlement`: Settle-once execution of a care agent's dispute decision, debiting borrower frozen hold.
 - `deposit_compensation`: Direct damage or loss compensation credited to lender from borrower deposit (0% platform commission).
 - `dispute_refund`: Rent refunded back to borrower available balance upon dispute ruling.
+- `appeal_reversal`: Compensatory deltas between care settlement and overturned admin appeal ruling, moving funds between `borrower.available`, `lender.available`, and `platform_revenue`.
 
 > [!IMPORTANT]
 > `reconciliation_adjustment` has been permanently removed from `LEDGER_ENTRY_TYPES`. No arbitrary balance mutations are allowed.
@@ -64,6 +65,8 @@ The platform has `platform_revenue` and `demo_funding` accounts.
 | Dispute decided (lender rent) | `borrower.frozen` (-(rent+deposit)); deposit compensation (0% comm) to `lender.available`; deposit remainder to `borrower.available`; late charge + rent minus 15% commission to `lender.available`; commission to `platform_revenue` |
 | Dispute decided (refund rent) | `borrower.frozen` (-(rent+deposit)); deposit compensation (0% comm) to `lender.available`; deposit remainder and full rent to `borrower.available`                                                                                    |
 | No-show dispute resolved      | `borrower.frozen` (-(rent+deposit)); whole rent and whole deposit returned to `borrower.available`                                                                                                                                    |
+| Overturned appeal reversal    | deltas between care settlement and admin ruling moved strictly between `borrower.available`, `lender.available`, and `platform_revenue` (zero-sum, debits capped at available balance, unrecovered shortfall recorded on dispute)     |
+| Overturned appeal reversal    | deltas between care settlement and admin ruling moved strictly between `borrower.available`, `lender.available`, and `platform_revenue` (zero-sum, debits capped at available balance, unrecovered shortfall recorded on dispute)     |
 
 ## 5. Settlement Math & Commission Rounding
 

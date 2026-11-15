@@ -23,6 +23,7 @@ const ledgerOperationSchema = new mongoose.Schema(
         'booking_cancel_refund',
         'settlement',
         'dispute_settlement',
+        'appeal_reversal',
       ],
     },
     opRef: {

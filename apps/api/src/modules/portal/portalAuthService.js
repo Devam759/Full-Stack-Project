@@ -11,11 +11,51 @@ import {
 } from '../../common/crypto.js';
 import { signAccessToken, signPreTotpToken, verifyAccessToken } from '../../common/jwt.js';
 import { verifyTotpCode, generateTotpSecret } from '../../services/totpService.js';
+import { getRedisClient } from '../../redis.js';
 
 const { TOKEN_AUDIENCES } = BUSINESS_CONFIG;
 
-// Attempt tracker for TOTP code validation
+// Attempt tracker for TOTP code validation fallback when Redis is unavailable
 const totpAttemptsMap = new Map();
+
+async function getTotpAttempts(userId, redis) {
+  if (redis && (redis.status === 'ready' || redis.status === 'connect')) {
+    try {
+      const val = await redis.get(`totp:attempts:${userId}`);
+      return val ? parseInt(val, 10) : 0;
+    } catch {
+      // fallback to memory map
+    }
+  }
+  return totpAttemptsMap.get(`totp:${userId}`) || 0;
+}
+
+async function recordTotpFailedAttempt(userId, redis) {
+  const current = (totpAttemptsMap.get(`totp:${userId}`) || 0) + 1;
+  totpAttemptsMap.set(`totp:${userId}`, current);
+  if (redis && (redis.status === 'ready' || redis.status === 'connect')) {
+    try {
+      await redis
+        .multi()
+        .incr(`totp:attempts:${userId}`)
+        .expire(`totp:attempts:${userId}`, 300)
+        .exec();
+    } catch {
+      // fallback
+    }
+  }
+}
+
+async function clearTotpAttempts(userId, redis) {
+  totpAttemptsMap.delete(`totp:${userId}`);
+  if (redis && (redis.status === 'ready' || redis.status === 'connect')) {
+    try {
+      await redis.del(`totp:attempts:${userId}`);
+    } catch {
+      // fallback
+    }
+  }
+}
 
 /**
  * Step 1 of Portal Login: Email + Password check.
@@ -69,8 +109,8 @@ export async function verifyPortalTotp({ tempToken, totpCode, userAgent }) {
   }
 
   const userId = decoded.sub;
-  const key = `totp:${userId}`;
-  const attempts = totpAttemptsMap.get(key) || 0;
+  const redis = getRedisClient();
+  const attempts = await getTotpAttempts(userId, redis);
 
   if (attempts >= BUSINESS_CONFIG.TOTP_SETTINGS.MAX_ATTEMPTS) {
     throw new AppError(
@@ -85,15 +125,27 @@ export async function verifyPortalTotp({ tempToken, totpCode, userAgent }) {
     throw new AppError(ERROR_CODES.UNAUTHORIZED, 'User or TOTP secret not found', 401);
   }
 
+  let effectiveLastStep = user.lastTotpStep || 0;
+  if (redis && (redis.status === 'ready' || redis.status === 'connect')) {
+    try {
+      const stepVal = await redis.get(`totp:step:${userId}`);
+      if (stepVal) {
+        effectiveLastStep = Math.max(effectiveLastStep, parseInt(stepVal, 10));
+      }
+    } catch {
+      // fallback
+    }
+  }
+
   const result = verifyTotpCode({
     code: totpCode,
     encryptedSecret: user.totpSecret,
-    lastStep: user.lastTotpStep || 0,
+    lastStep: effectiveLastStep,
     email: user.email,
   });
 
   if (!result.valid) {
-    totpAttemptsMap.set(key, attempts + 1);
+    await recordTotpFailedAttempt(userId, redis);
     const msg = result.replayed
       ? 'TOTP code has already been used. Please wait for the next code.'
       : 'Invalid 6-digit authentication code';
@@ -101,10 +153,18 @@ export async function verifyPortalTotp({ tempToken, totpCode, userAgent }) {
   }
 
   // Clear failed attempts and update lastTotpStep
-  totpAttemptsMap.delete(key);
+  await clearTotpAttempts(userId, redis);
   user.lastTotpStep = result.newStep;
   user.lastLoginAt = new Date();
   await user.save();
+
+  if (redis && (redis.status === 'ready' || redis.status === 'connect')) {
+    try {
+      await redis.set(`totp:step:${userId}`, result.newStep, 'EX', 120);
+    } catch {
+      // fallback
+    }
+  }
 
   // Issue portal session tokens
   const rawRefreshToken = generateRandomToken(40);

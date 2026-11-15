@@ -21,6 +21,10 @@ const ReconciliationRunSchema = new Schema(
       type: Date,
       default: null,
     },
+    completedAt: {
+      type: Date,
+      default: null,
+    },
     status: {
       type: String,
       enum: ['in_progress', 'completed', 'failed'],

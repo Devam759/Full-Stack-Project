@@ -22,6 +22,7 @@ import {
   Message,
   Notification,
   DomainEvent,
+  AuditLog,
 } from '@borrowloop/server-core';
 
 const MONGODB_URI =
@@ -343,11 +344,31 @@ export async function seedActiveWorkload(overrideUri) {
     leaseExpiresAt: null,
   });
 
+  // 9. Admin User & AuditLog row (Phase 9 invariant)
+  const admin = await User.create({
+    email: 'admin_inv@borrowloop.test',
+    name: 'Invariants Admin',
+    role: 'admin',
+    status: 'active',
+    passwordHash: 'dummy-hash',
+  });
+
+  await AuditLog.create({
+    actorId: admin._id,
+    actorRole: 'admin',
+    action: 'item_moderated',
+    targetType: 'item',
+    targetId: item1._id.toString(),
+    before: { status: 'active' },
+    after: { status: 'active', reason: 'Routine verification audit pass' },
+    ip: '127.0.0.1',
+  });
+
   console.info('Successfully seeded active invariants workload:');
   console.info(`- Active Bookings: 2 (IDs: ${booking1._id}, ${booking2._id})`);
   console.info(`- ItemDayLocks: ${locks.length}`);
   console.info(`- Total Frozen Funds: ₹950.00 (${borrowerWallet.frozenPaise} paise)`);
-  console.info(`- Conversations: 2, Messages: 2, Notifications: 2`);
+  console.info(`- Conversations: 2, Messages: 2, Notifications: 2, AuditLogs: 1`);
 
   await mongoose.disconnect();
 }

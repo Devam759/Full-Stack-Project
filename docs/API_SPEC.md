@@ -16,12 +16,12 @@ Base URL: `https://api.<domain>/v1`. JSON only. Authentication uses `Authorizati
 
 ### Error codes:
 
-- **400 Bad Request**: `VALIDATION_ERROR`, `BAD_REQUEST`, `INVALID_IDEMPOTENCY_KEY`, `QR_INVALID`, `QR_EXPIRED`, `HANDOVER_TOO_FAR`, `HANDOVER_CODE_INVALID`, `HANDOVER_PHOTO_WINDOW_CLOSED`, `HANDOVER_PHOTO_LIMIT`, `DISPUTE_DECISION_INVALID`, `APPEAL_WINDOW_CLOSED`
+- **400 Bad Request**: `VALIDATION_ERROR`, `BAD_REQUEST`, `INVALID_IDEMPOTENCY_KEY`, `QR_INVALID`, `QR_EXPIRED`, `HANDOVER_TOO_FAR`, `HANDOVER_CODE_INVALID`, `HANDOVER_PHOTO_WINDOW_CLOSED`, `HANDOVER_PHOTO_LIMIT`, `DISPUTE_DECISION_INVALID`, `APPEAL_WINDOW_CLOSED`, `APPEAL_SHORTFALL_NOT_ACKNOWLEDGED`, `ADS_CONFIG_INVALID`
 - **401 Unauthorized**: `UNAUTHORIZED`, `INVALID_CREDENTIALS`, `TOKEN_EXPIRED`, `TOKEN_REVOKED`, `TOTP_REQUIRED`, `INVALID_TOTP`
-- **403 Forbidden**: `FORBIDDEN`, `EMAIL_NOT_VERIFIED`, `ACCOUNT_BANNED`, `ACCOUNT_FROZEN`, `ACCOUNT_SUSPENDED`, `HANDOVER_LOCKED`, `RATING_NOT_ALLOWED`, `UNDERAGE`, `DISPUTE_NOT_ALLOWED`, `DISPUTE_NOT_ASSIGNED_TO_YOU`, `REPORT_NOT_ALLOWED`, `CONFLICT_OF_INTEREST`
-- **404 Not Found**: `NOT_FOUND`, `USER_NOT_FOUND`, `ITEM_NOT_FOUND`, `COMMUNITY_NOT_FOUND`, `BOOKING_NOT_FOUND`, `DISPUTE_NOT_FOUND`, `REPORT_NOT_FOUND`
-- **409 Conflict**: `CONFLICT`, `BOOKING_DATES_TAKEN`, `INVALID_BOOKING_TRANSITION`, `INSUFFICIENT_FUNDS`, `WALLET_CAP_EXCEEDED`, `IDEMPOTENCY_KEY_REUSE`, `IDEMPOTENCY_IN_PROGRESS`, `OPERATION_ALREADY_APPLIED`, `QR_ALREADY_USED`, `RATING_ALREADY_SUBMITTED`, `DISPUTE_ALREADY_EXISTS`, `DISPUTE_INVALID_STATE`, `DISPUTE_ALREADY_ASSIGNED`, `APPEAL_ALREADY_SUBMITTED`, `REPORT_ALREADY_FILED`
-- **429 Rate Limited**: `RATE_LIMITED`
+- **403 Forbidden**: `FORBIDDEN`, `EMAIL_NOT_VERIFIED`, `ACCOUNT_BANNED`, `ACCOUNT_FROZEN`, `ACCOUNT_SUSPENDED`, `HANDOVER_LOCKED`, `RATING_NOT_ALLOWED`, `UNDERAGE`, `DISPUTE_NOT_ALLOWED`, `DISPUTE_NOT_ASSIGNED_TO_YOU`, `REPORT_NOT_ALLOWED`, `CONFLICT_OF_INTEREST`, `CANNOT_MODIFY_STAFF`
+- **404 Not Found**: `NOT_FOUND`, `USER_NOT_FOUND`, `ITEM_NOT_FOUND`, `COMMUNITY_NOT_FOUND`, `BOOKING_NOT_FOUND`, `DISPUTE_NOT_FOUND`, `REPORT_NOT_FOUND`, `APPEAL_NOT_FOUND`
+- **409 Conflict**: `CONFLICT`, `BOOKING_DATES_TAKEN`, `INVALID_BOOKING_TRANSITION`, `INSUFFICIENT_FUNDS`, `WALLET_CAP_EXCEEDED`, `IDEMPOTENCY_KEY_REUSE`, `IDEMPOTENCY_IN_PROGRESS`, `OPERATION_ALREADY_APPLIED`, `QR_ALREADY_USED`, `RATING_ALREADY_SUBMITTED`, `DISPUTE_ALREADY_EXISTS`, `DISPUTE_INVALID_STATE`, `DISPUTE_ALREADY_ASSIGNED`, `APPEAL_ALREADY_SUBMITTED`, `APPEAL_NOT_PENDING`, `USER_HAS_ACTIVE_BOOKINGS`, `LAST_ADMIN`, `REPORT_ALREADY_FILED`
+- **429 Rate Limited**: `RATE_LIMITED`, `RECONCILIATION_COOLDOWN`
 - **500 Server Error**: `INTERNAL_ERROR`, `LEDGER_INVARIANT_VIOLATION`
 
 ## Pagination
@@ -246,16 +246,23 @@ All mutating handover and return endpoints require authenticated user, verified 
 - `POST /care/reports/:id/action` { action, note }. Actions: dismiss, hide_item, remove_item, restore_item, warn_user, strike_user. Idempotency-Key.
 - `GET /care/users/:id` and `GET /care/users?q=` user lookup with sanitized trust, strike, booking, and dispute history.
 
-## Admin portal (role admin)
+## Admin portal (role admin, authenticate TOKEN_AUDIENCES.PORTAL)
 
-- `GET /admin/analytics/overview` users, items, bookings, volume, commission earned, open disputes
-- `GET /admin/users`, `POST /admin/users/:id/ban|unban|reverse-strike`
-- `GET /admin/communities`, `POST /admin/communities/:id/suspend|restore`
-- `GET /admin/agents`, `POST /admin/agents`, `DELETE /admin/agents/:id`
-- `GET /admin/appeals`, `POST /admin/appeals/:id/decide`
-- `GET /admin/ads`, `PATCH /admin/ads/:placement`
-- `GET /admin/audit-log`
-- `GET /admin/ledger/reconciliation`
+- `GET /admin/analytics/overview` users (total, active, frozen, banned), items, bookings, rented now, volume, deposits held, commission earned, open disputes, pending appeals, dispute ratio (Demo money).
+- `GET /admin/users?q=&role=&status=&limit=&cursor=`, `GET /admin/users/:id` (audited read).
+- `POST /admin/users/:id/ban`, `POST /admin/users/:id/unban`, `POST /admin/users/:id/reverse-strike` { reason }. Idempotency-Key.
+- `GET /admin/communities?status=&type=&limit=&cursor=`, `POST /admin/communities/:id/suspend`, `POST /admin/communities/:id/restore` { reason }. Idempotency-Key.
+- `GET /admin/agents`, `POST /admin/agents` { userId, reason }, `DELETE /admin/agents/:id` { reason }.
+- `GET /admin/appeals?status=&limit=&cursor=` (pending first).
+- `POST /admin/appeals/:id/preview` { revisedDecision } (returns deltas, commission change, shortfall).
+- `POST /admin/appeals/:id/decide` { decision: 'upheld'|'overturned', note, revisedDecision?, acknowledgeShortfall? }. Idempotency-Key.
+- `GET /admin/ads`, `PATCH /admin/ads/:placement` { enabled?, adsenseSlotId?, reason }, `POST /admin/ads/master` { enabled, confirm?, clientId?, reason }.
+- `GET /admin/audit-log?actorId=&action=&targetType=&from=&to=&limit=&cursor=`.
+- `GET /admin/ledger/reconciliation?limit=&cursor=`, `POST /admin/ledger/reconciliation/run`. Idempotency-Key.
+
+## Public Ads Configuration
+
+- `GET /ads/config` public, cached, rate-limited: `{ enabled, clientId, placements: [...] }`.
 
 ## Health
 

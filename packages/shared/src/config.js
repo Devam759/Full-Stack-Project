@@ -42,6 +42,7 @@ export const BUSINESS_CONFIG = Object.freeze({
     'dispute_settlement',
     'deposit_compensation',
     'dispute_refund',
+    'appeal_reversal',
   ]),
   WALLET_RATE_LIMITS: Object.freeze({
     ADD_FUNDS: Object.freeze({ windowSeconds: 60, maxRequests: 10 }),
@@ -409,7 +410,66 @@ export const BUSINESS_CONFIG = Object.freeze({
       'item_auto_hidden',
       'report_reviewed',
       'user_warning',
+      'appeal_decided',
+      'user_banned',
+      'user_unbanned',
+      'strike_reversed',
+      'community_suspended',
+      'community_restored',
+      'staff_invited',
+      'staff_removed',
     ]),
+  }),
+
+  // Admin & Operations Portal (Phase 9)
+  ADMIN: Object.freeze({
+    PAGE_LIMIT: 20,
+    MAX_PAGE_LIMIT: 50,
+    ANALYTICS_CACHE_TTL_SECONDS: 60,
+    REASON_MIN_LENGTH: 10,
+    RECONCILIATION_RUN_COOLDOWN_SECONDS: 300,
+    RATE_LIMITS: Object.freeze({
+      USERS_LIST: Object.freeze({ windowSeconds: 60, maxRequests: 60 }),
+      ANALYTICS: Object.freeze({ windowSeconds: 60, maxRequests: 30 }),
+      RECONCILIATION_RUN: Object.freeze({ windowSeconds: 300, maxRequests: 5 }),
+    }),
+  }),
+
+  // Appeals (Phase 9)
+  APPEALS: Object.freeze({
+    STATUSES: Object.freeze(['pending', 'upheld', 'overturned']),
+    DECISION_NOTE_MIN_LENGTH: 20,
+    DECISION_NOTE_MAX_LENGTH: 2000,
+  }),
+
+  // Advertisements & Consent (Phase 9)
+  ADS: Object.freeze({
+    PLACEMENTS: Object.freeze(['home_banner', 'item_sidebar', 'search_results']),
+    DEFAULT_MASTER_ENABLED: false,
+    ALLOWED_SCREENS: Object.freeze(['items', 'item-detail']),
+    RESTRICTED_SCREENS: Object.freeze([
+      'wallet',
+      'my-bookings',
+      'booking-detail',
+      'booking-request',
+      'chat',
+      'dispute-detail',
+      'notifications',
+      'profile',
+      'settings',
+      'onboarding',
+      'login',
+      'signup',
+      'forgot-password',
+      'reset-password',
+      'verify-email',
+      'photo-step',
+      'create-item',
+      'portal',
+    ]),
+    CONSENT_MAX_AGE_DAYS: 180,
+    CLIENT_ID_PATTERN: /^ca-pub-\d{10,20}$/,
+    SLOT_ID_PATTERN: /^\d{6,20}$/,
   }),
 
   // Outbox Dispatcher Configuration (Phase 6)

@@ -73,18 +73,28 @@ export async function recompute(userId, session = null) {
   // 2. Fetch all trust events for this user
   const events = await TrustEvent.find({ userId }).session(session);
 
+  // Identify all events that have been reversed by append-only penalty_reversed events
+  const reversedEventKeys = new Set(
+    events
+      .filter((e) => e.type === 'penalty_reversed' && e.meta?.reverses)
+      .map((e) => e.meta.reverses),
+  );
+
   // 3. Compute distinct on-time completions per counterparty and role
   const onTimeEvents = events
-    .filter((e) => e.type === 'on_time_completed')
+    .filter((e) => e.type === 'on_time_completed' && !reversedEventKeys.has(e.eventKey))
     .map((e) => ({
       counterpartyId: e.counterpartyId,
       role: e.role === 'lender' ? 'lend' : e.role === 'borrower' ? 'borrow' : e.role,
     }));
   const onTimeCount = computeDistinctOnTimeCount(onTimeEvents);
 
-  // 4. Gather penalties
+  // 4. Gather penalties (skipping reversed events)
   let penaltySum = 0;
   for (const e of events) {
+    if (reversedEventKeys.has(e.eventKey)) {
+      continue;
+    }
     if (
       e.type === 'lost_dispute' ||
       e.type === 'late_cancel' ||
