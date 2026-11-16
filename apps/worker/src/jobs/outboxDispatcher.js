@@ -22,20 +22,17 @@ import logger from '../logger.js';
 import { EMAIL_QUEUE_NAME } from './emailWorker.js';
 
 let emailQueue = null;
-let redisEmitter = null;
-
 function getRedisEmitter(redisClient) {
-  if (!redisEmitter && redisClient) {
-    try {
-      if (redisClient.status !== 'ready' && redisClient.status !== 'connecting') {
-        redisClient.connect().catch(() => {});
-      }
-      redisEmitter = new Emitter(redisClient);
-    } catch (err) {
-      logger.warn({ err: err.message }, 'Failed to initialize Redis Emitter');
+  if (!redisClient) return null;
+  try {
+    if (redisClient.status !== 'ready' && redisClient.status !== 'connecting') {
+      redisClient.connect().catch(() => {});
     }
+    return new Emitter(redisClient);
+  } catch (err) {
+    logger.warn({ err: err.message }, 'Failed to initialize Redis Emitter');
+    return null;
   }
-  return redisEmitter;
 }
 
 export const HANDLED_EVENT_TYPES = new Set([
@@ -831,7 +828,9 @@ export async function processOutboxEvents({
  * @param {import('ioredis').Redis} redisClient
  */
 export function startOutboxDispatcher(redisClient) {
-  const intervalMs = BUSINESS_CONFIG.OUTBOX.POLL_INTERVAL_MS;
+  const intervalMs = process.env.TEST_OUTBOX_POLL_MS
+    ? parseInt(process.env.TEST_OUTBOX_POLL_MS, 10)
+    : BUSINESS_CONFIG.OUTBOX.POLL_INTERVAL_MS;
 
   const timer = setInterval(async () => {
     await runWithRedisLock({

@@ -132,7 +132,7 @@ export function initSocketServer(httpServer) {
         await redis.connect().catch(() => {});
       }
 
-      if (redis && redis.status === 'ready') {
+      if (redis && (redis.status === 'ready' || redis.status === 'connecting')) {
         const cutoff = Date.now() - HEARTBEAT_TTL_MS;
         await redis.zremrangebyscore(`user_sockets:${userIdStr}`, 0, cutoff).catch(() => {});
         const socketCount = await redis.zcard(`user_sockets:${userIdStr}`);
@@ -187,7 +187,7 @@ export function initSocketServer(httpServer) {
         if (redis && redis.status === 'wait') {
           await redis.connect().catch(() => {});
         }
-        if (redis && redis.status === 'ready') {
+        if (redis && (redis.status === 'ready' || redis.status === 'connecting')) {
           await redis.zadd(`user_sockets:${userId}`, Date.now(), socket.id);
           await redis.expire(`user_sockets:${userId}`, 60);
 
@@ -330,7 +330,7 @@ export function initSocketServer(httpServer) {
 
     socket.on('disconnect', async () => {
       if (heartbeatTimer) clearInterval(heartbeatTimer);
-      if (redis && redis.status === 'ready') {
+      if (redis && (redis.status === 'ready' || redis.status === 'connecting')) {
         await redis.zrem(`user_sockets:${userId}`, socket.id).catch(() => {});
       }
       const current = userSocketCounts.get(userId) || 1;

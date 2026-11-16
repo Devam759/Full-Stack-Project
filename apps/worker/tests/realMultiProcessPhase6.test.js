@@ -362,7 +362,7 @@ describe('Item 1: Real-Process Multi-Instance Tests (Worker & API)', () => {
 
     const api1 = spawnAPI();
     const api2 = spawnAPI();
-    const worker = spawnWorker();
+    const worker = spawnWorker({ TEST_OUTBOX_POLL_MS: '200' });
 
     let sockA = null;
     let sockB = null;
