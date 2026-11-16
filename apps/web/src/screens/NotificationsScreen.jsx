@@ -60,15 +60,15 @@ export function NotificationsScreen({ onNavigate }) {
   };
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-8">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+    <div className="space-y-6 pb-20">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-            <Bell className="w-6 h-6 text-brand-600" />
-            Notifications
+          <h1 className="text-3xl sm:text-4xl font-heading font-black tracking-tight text-black flex items-center gap-3">
+            <Bell className="w-8 h-8 text-black" />
+            <span>Notifications</span>
           </h1>
-          <p className="text-xs text-slate-500 mt-1">
-            Stay updated on booking requests, approvals, meeting places, and reminders.
+          <p className="text-sm text-neutral-500 mt-1">
+            Stay updated on booking requests, handover verifications, and community notices.
           </p>
         </div>
 
@@ -77,24 +77,22 @@ export function NotificationsScreen({ onNavigate }) {
             <button
               type="button"
               onClick={handleMarkAllRead}
-              className="px-3 py-1.5 text-xs font-semibold text-brand-700 bg-brand-50 hover:bg-brand-100 rounded-lg flex items-center gap-1.5 transition-colors"
+              className="px-4 py-2 text-xs font-bold text-black bg-neutral-100 hover:bg-neutral-200 rounded-full flex items-center gap-2 transition"
             >
               <Check className="w-4 h-4" />
-              Mark all as read
+              <span>Mark all as read</span>
             </button>
           )}
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="flex items-center gap-2 border-b border-slate-200 mb-4 pb-2 text-xs font-semibold">
+      <div className="flex gap-2 p-1.5 bg-neutral-100 rounded-2xl w-fit">
         <button
           type="button"
           onClick={() => setFilter('all')}
-          className={`px-3 py-1.5 rounded-lg transition-colors ${
-            filter === 'all'
-              ? 'bg-slate-900 text-white'
-              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+          className={`px-5 py-2 text-xs font-bold rounded-xl transition ${
+            filter === 'all' ? 'bg-black text-white shadow-xs' : 'text-neutral-600 hover:text-black'
           }`}
         >
           All
@@ -102,15 +100,15 @@ export function NotificationsScreen({ onNavigate }) {
         <button
           type="button"
           onClick={() => setFilter('unread')}
-          className={`px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${
+          className={`px-5 py-2 text-xs font-bold rounded-xl transition flex items-center gap-2 ${
             filter === 'unread'
-              ? 'bg-slate-900 text-white'
-              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+              ? 'bg-black text-white shadow-xs'
+              : 'text-neutral-600 hover:text-black'
           }`}
         >
-          Unread
+          <span>Unread</span>
           {unreadCount > 0 && (
-            <span className="bg-red-500 text-white text-[10px] px-1.5 py-0.2 rounded-full">
+            <span className="bg-white text-black text-[10px] px-1.5 py-0.2 rounded-full font-bold">
               {unreadCount}
             </span>
           )}
@@ -118,11 +116,13 @@ export function NotificationsScreen({ onNavigate }) {
       </div>
 
       {/* List */}
-      <div className="bg-white rounded-2xl border border-slate-200 divide-y divide-slate-100 overflow-hidden shadow-xs">
+      <div className="bg-white rounded-3xl border border-neutral-200 divide-y divide-neutral-100 overflow-hidden shadow-xs">
         {loading ? (
-          <div className="py-12 text-center text-xs text-slate-400">Loading notifications...</div>
+          <div className="py-16 text-center text-xs text-neutral-400 font-semibold">
+            Loading notifications...
+          </div>
         ) : notifications.length === 0 ? (
-          <div className="py-12 text-center text-xs text-slate-400">
+          <div className="py-16 text-center text-xs text-neutral-400 font-medium">
             {filter === 'unread' ? 'No unread notifications' : 'No notifications yet'}
           </div>
         ) : (
@@ -130,17 +130,17 @@ export function NotificationsScreen({ onNavigate }) {
             <div
               key={n.id}
               onClick={() => handleMarkOneRead(n.id, n.link)}
-              className={`p-4 cursor-pointer hover:bg-slate-50 transition-colors flex items-start justify-between gap-4 ${
-                !n.readAt ? 'bg-brand-50/30' : ''
+              className={`p-5 cursor-pointer hover:bg-neutral-50 transition-colors flex items-start justify-between gap-4 ${
+                !n.readAt ? 'bg-neutral-50/60' : ''
               }`}
             >
               <div className="flex-1">
                 <div className="flex items-center gap-2">
-                  <h3 className="text-xs font-bold text-slate-900">{n.title}</h3>
-                  {!n.readAt && <span className="w-2 h-2 rounded-full bg-brand-600 inline-block" />}
+                  <h3 className="text-sm font-bold text-black">{n.title}</h3>
+                  {!n.readAt && <span className="w-2 h-2 rounded-full bg-black inline-block" />}
                 </div>
-                <p className="text-xs text-slate-600 mt-1 leading-relaxed">{n.body}</p>
-                <span className="text-[10px] text-slate-400 mt-2 block">
+                <p className="text-xs text-neutral-600 mt-1 leading-relaxed">{n.body}</p>
+                <span className="text-[11px] text-neutral-400 mt-2 block font-medium">
                   {new Date(n.createdAt).toLocaleDateString([], {
                     month: 'short',
                     day: 'numeric',
@@ -154,7 +154,7 @@ export function NotificationsScreen({ onNavigate }) {
               </div>
 
               {n.link && (
-                <div className="text-slate-400 hover:text-slate-600 p-1 flex-shrink-0">
+                <div className="text-neutral-400 hover:text-black p-1 shrink-0 transition">
                   <ExternalLink className="w-4 h-4" />
                 </div>
               )}

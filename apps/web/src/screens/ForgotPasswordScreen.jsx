@@ -20,7 +20,6 @@ export function ForgotPasswordScreen({ onNavigate }) {
       });
       setSubmitted(true);
     } catch (err) {
-      // Even on error, show safe message to prevent email enumeration
       setError(err.message || 'Unable to process password reset request. Please try again.');
     } finally {
       setLoading(false);
@@ -28,69 +27,73 @@ export function ForgotPasswordScreen({ onNavigate }) {
   };
 
   return (
-    <div className="max-w-md mx-auto p-4 space-y-5 pt-8">
-      <div className="flex items-center gap-2 mb-2">
+    <div className="max-w-md mx-auto p-4 space-y-6 pt-10">
+      <div className="flex items-center gap-2 mb-1">
         <button
           type="button"
           onClick={() => onNavigate('login')}
-          className="text-text-muted hover:text-slate-900 p-1 -ml-1 rounded focus:outline-none"
+          className="text-neutral-500 hover:text-black p-1.5 -ml-2 rounded-full hover:bg-neutral-100 transition focus:outline-none"
           aria-label="Back to login"
         >
           <ArrowLeft className="w-5 h-5" />
         </button>
-        <span className="text-xs font-medium text-text-muted">Back to login</span>
+        <span className="text-xs font-semibold text-neutral-600">Back to log in</span>
       </div>
 
-      <div className="text-center">
-        <h1 className="text-xl font-heading font-bold text-slate-900">Forgot Password</h1>
-        <p className="text-xs text-text-muted mt-1">
-          Enter your registered email address and we&apos;ll send you a password reset link.
+      <div>
+        <h1 className="text-3xl font-heading font-black tracking-tight text-black">
+          Forgot password?
+        </h1>
+        <p className="text-sm text-neutral-500 mt-1">
+          Enter your registered email and we&apos;ll send you a password reset link.
         </p>
       </div>
 
       {submitted ? (
-        <div className="p-4 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-brand text-xs space-y-3">
-          <div className="flex items-start gap-2">
-            <CheckCircle className="w-4 h-4 mt-0.5 shrink-0 text-emerald-600" />
+        <div className="p-6 bg-white border border-neutral-200 rounded-3xl text-sm space-y-4 shadow-sm">
+          <div className="flex items-start gap-3">
+            <CheckCircle className="w-5 h-5 mt-0.5 shrink-0 text-emerald-600" />
             <div>
-              <p className="font-semibold">Reset link sent</p>
-              <p className="mt-1">
-                If an account exists for <strong>{email}</strong>, you will receive an email with
-                instructions to reset your password.
+              <p className="font-bold text-black">Reset instructions sent</p>
+              <p className="mt-1 text-neutral-600 text-xs">
+                If an account exists for <strong className="text-black">{email}</strong>, you will
+                receive an email shortly with instructions to reset your password.
               </p>
             </div>
           </div>
           <button
             type="button"
             onClick={() => onNavigate('login')}
-            className="w-full py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-brand font-semibold text-xs transition"
+            className="w-full py-3 bg-black hover:bg-neutral-800 text-white rounded-full font-bold text-sm transition"
           >
-            Return to Log In
+            Return to log in
           </button>
         </div>
       ) : (
         <form
           onSubmit={handleSubmit}
-          className="space-y-4 bg-surface p-5 rounded-brand border border-slate-200 shadow-sm"
+          className="space-y-5 bg-white p-6 sm:p-8 rounded-3xl border border-neutral-200 shadow-sm"
         >
           {error && (
-            <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-brand text-xs flex items-start gap-2">
-              <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
-              <span>{error}</span>
+            <div className="p-4 bg-red-50 border border-red-200 text-red-700 rounded-2xl text-xs flex items-start gap-2.5">
+              <AlertCircle className="w-4 h-4 mt-0.5 shrink-0 text-red-600" />
+              <span className="font-medium">{error}</span>
             </div>
           )}
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">Email</label>
+            <label className="block text-xs font-bold text-neutral-800 uppercase tracking-wider mb-1.5">
+              Email address
+            </label>
             <div className="relative">
-              <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+              <Mail className="w-4 h-4 text-neutral-400 absolute left-3.5 top-3.5" />
               <input
                 type="email"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@example.com"
-                className="w-full text-xs pl-9 pr-3 py-2 border border-slate-300 rounded-brand outline-none focus:border-primary"
+                placeholder="name@example.com"
+                className="w-full text-sm pl-10 pr-3.5 py-3 bg-neutral-100 hover:bg-neutral-100/80 focus:bg-white border border-transparent focus:border-black rounded-xl outline-none transition"
               />
             </div>
           </div>
@@ -98,9 +101,9 @@ export function ForgotPasswordScreen({ onNavigate }) {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-2.5 bg-primary hover:bg-primary-dark text-white rounded-brand text-xs font-semibold transition mt-2 disabled:opacity-50"
+            className="w-full py-3.5 bg-black hover:bg-neutral-800 active:bg-neutral-900 text-white rounded-full text-sm font-bold transition shadow-xs disabled:opacity-50"
           >
-            {loading ? 'Sending link...' : 'Send Reset Link'}
+            {loading ? 'Sending link...' : 'Send reset link'}
           </button>
         </form>
       )}

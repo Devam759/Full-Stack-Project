@@ -13,6 +13,7 @@ import createRateLimiter from './common/rateLimiter.js';
 import { getRedisClient } from './redis.js';
 
 import healthRouter from './routes/health.js';
+import docsRouter from './docs/docsRouter.js';
 import authRouter from './modules/auth/authRoutes.js';
 import portalAuthRouter from './modules/portal/portalAuthRoutes.js';
 import userRouter from './modules/users/userRoutes.js';
@@ -41,8 +42,12 @@ import careUserRouter from './modules/care/careUserRoutes.js';
 export function createApp() {
   const app = express();
 
-  // Basic security headers
-  app.use(helmet());
+  // Basic security headers (allowing Swagger UI inline styles & assets)
+  app.use(
+    helmet({
+      contentSecurityPolicy: false,
+    }),
+  );
 
   // CORS configuration
   const allowedOrigins = [...config.CLIENT_ORIGINS, config.PORTAL_ORIGIN].filter(Boolean);
@@ -96,6 +101,10 @@ export function createApp() {
   // Health and readiness routes
   app.use('/v1', healthRouter);
   app.use('/', healthRouter);
+
+  // Interactive Swagger API documentation (Part C)
+  app.use('/v1/docs', docsRouter);
+  app.get('/docs', (_req, res) => res.redirect('/v1/docs'));
 
   // Module routes
   app.use('/v1/auth', authRouter);

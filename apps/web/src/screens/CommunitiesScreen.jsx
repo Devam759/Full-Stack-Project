@@ -76,46 +76,47 @@ export function CommunitiesScreen({ onSelectCommunity }) {
   };
 
   return (
-    <div className="max-w-md mx-auto p-4 space-y-4 pb-24">
-      {/* Header with Location & Create Button */}
-      <div className="flex items-center justify-between pt-1">
+    <div className="space-y-8 pb-20">
+      {/* Header with Title and Create CTA */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-lg font-heading font-bold text-slate-900">Communities</h1>
-          <div className="flex items-center gap-1 text-xs text-text-muted mt-0.5">
-            <MapPin className="w-3.5 h-3.5 text-primary" />
-            <span className="font-medium text-slate-700">{location.city}</span>
-          </div>
+          <h1 className="text-3xl sm:text-4xl font-heading font-black tracking-tight text-black">
+            Communities
+          </h1>
+          <p className="text-sm text-neutral-500 mt-1">
+            Discover verified campus circles and neighborhood sharing hubs near you.
+          </p>
         </div>
 
         {user && (
           <button
             type="button"
             onClick={() => setShowCreateModal(true)}
-            className="py-1.5 px-3 bg-primary hover:bg-primary-dark text-white text-xs font-semibold rounded-brand flex items-center gap-1.5 shadow-xs"
+            className="self-start sm:self-auto py-2.5 px-5 bg-black hover:bg-neutral-800 text-white text-xs font-bold rounded-full inline-flex items-center gap-2 shadow-xs transition"
           >
-            <Plus className="w-3.5 h-3.5" />
-            <span>Create</span>
+            <Plus className="w-4 h-4" />
+            <span>Create community</span>
           </button>
         )}
       </div>
 
-      {/* Location / Search Selector */}
-      <div className="bg-surface rounded-brand border border-slate-200 p-3 shadow-xs space-y-2">
-        <form onSubmit={handleCitySearch} className="flex gap-2">
+      {/* Location / Search Box (Uber styled search bar) */}
+      <div className="bg-neutral-50 border border-neutral-200 rounded-3xl p-5 sm:p-6 space-y-3">
+        <form onSubmit={handleCitySearch} className="flex flex-col sm:flex-row gap-3">
           <div className="relative flex-1">
-            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" />
+            <Search className="w-4 h-4 text-neutral-400 absolute left-4 top-3.5" />
             <input
               type="text"
-              placeholder="Search city or neighborhood..."
+              placeholder="Search city, campus, or neighborhood..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full text-xs pl-8 pr-2 py-2 border border-slate-300 rounded-brand outline-none focus:border-primary"
+              className="w-full text-sm pl-11 pr-4 py-3 bg-white border border-neutral-200 focus:border-black rounded-xl outline-none transition"
             />
           </div>
           <button
             type="submit"
             disabled={isSearchingCity}
-            className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium rounded-brand"
+            className="px-6 py-3 bg-black hover:bg-neutral-800 text-white text-xs font-bold rounded-xl transition disabled:opacity-50"
           >
             Search
           </button>
@@ -123,15 +124,15 @@ export function CommunitiesScreen({ onSelectCommunity }) {
 
         {/* Search Results Dropdown */}
         {searchResults.length > 0 && (
-          <div className="bg-white border border-slate-200 rounded-brand shadow-md divide-y divide-slate-100 max-h-48 overflow-y-auto">
+          <div className="bg-white border border-neutral-200 rounded-2xl shadow-lg divide-y divide-neutral-100 max-h-56 overflow-y-auto">
             {searchResults.map((res, i) => (
               <button
                 key={i}
                 type="button"
                 onClick={() => handleSelectCityResult(res)}
-                className="w-full text-left p-2 hover:bg-slate-50 text-xs text-slate-700 flex items-start gap-2"
+                className="w-full text-left p-3 hover:bg-neutral-50 text-sm text-neutral-800 flex items-start gap-2.5 transition"
               >
-                <Compass className="w-3.5 h-3.5 text-primary mt-0.5 shrink-0" />
+                <Compass className="w-4 h-4 text-black mt-0.5 shrink-0" />
                 <span className="truncate">{res.label}</span>
               </button>
             ))}
@@ -139,103 +140,115 @@ export function CommunitiesScreen({ onSelectCommunity }) {
         )}
 
         <div className="flex items-center justify-between pt-1">
+          <div className="flex items-center gap-2 text-xs">
+            <span className="text-neutral-500">Current area:</span>
+            <span className="inline-flex items-center gap-1 font-bold text-black bg-white px-3 py-1 rounded-full border border-neutral-200">
+              <MapPin className="w-3.5 h-3.5 text-black" />
+              <span>{location.city}</span>
+            </span>
+          </div>
+
           <button
             type="button"
             onClick={handleUseCurrentLocation}
-            className="text-[11px] text-primary hover:underline font-medium flex items-center gap-1"
+            className="text-xs text-black hover:underline font-bold inline-flex items-center gap-1.5 transition"
           >
-            <Compass className="w-3.5 h-3.5" />
-            <span>Use current location</span>
+            <Compass className="w-4 h-4" />
+            <span>Use my GPS location</span>
           </button>
-
-          <span className="text-[10px] text-text-muted">OpenStreetMap Geocoding</span>
         </div>
       </div>
 
-      {/* Communities List */}
-      <div className="space-y-3">
+      {/* Communities Grid */}
+      <div>
         {loading ? (
-          <div className="p-8 text-center text-xs text-text-muted">
+          <div className="py-20 text-center text-sm text-neutral-400 font-medium">
             Finding nearby communities...
           </div>
         ) : communities.length === 0 ? (
-          /* Empty State (User Change 12) */
-          <div className="bg-surface rounded-brand border border-slate-200 p-8 text-center space-y-3 shadow-xs">
-            <div className="inline-flex p-3 rounded-full bg-slate-100 text-slate-400">
-              <Users className="w-7 h-7" />
+          /* Empty State */
+          <div className="bg-white rounded-3xl border border-neutral-200 p-12 text-center space-y-4 shadow-sm max-w-xl mx-auto">
+            <div className="inline-flex p-4 rounded-full bg-neutral-100 text-neutral-500">
+              <Users className="w-8 h-8" />
             </div>
             <div>
-              <h2 className="text-sm font-bold text-slate-900">No Communities Nearby Yet</h2>
-              <p className="text-xs text-text-muted mt-1 max-w-xs mx-auto">
-                Be the first to start a borrowing loop in {location.city}! Invite your hostel,
-                campus, or apartment neighbors.
+              <h2 className="text-lg font-bold text-black">No communities nearby yet</h2>
+              <p className="text-sm text-neutral-500 mt-1 max-w-md mx-auto">
+                Be the first to start a borrowing loop in {location.city}! Invite your hostel mates,
+                campus peers, or neighbors.
               </p>
             </div>
             {user ? (
               <button
                 type="button"
                 onClick={() => setShowCreateModal(true)}
-                className="mt-2 py-2 px-4 bg-primary hover:bg-primary-dark text-white text-xs font-semibold rounded-brand inline-flex items-center gap-1.5 shadow-xs"
+                className="mt-3 py-3 px-6 bg-black hover:bg-neutral-800 text-white text-xs font-bold rounded-full inline-flex items-center gap-2 transition"
               >
                 <Plus className="w-4 h-4" />
-                <span>Create a Community</span>
+                <span>Create a community</span>
               </button>
             ) : (
-              <p className="text-[11px] text-primary font-medium">Log in to create a community</p>
+              <p className="text-xs text-black font-bold">Log in to create a community</p>
             )}
           </div>
         ) : (
-          communities.map((comm) => (
-            <div
-              key={comm.id}
-              onClick={() => onSelectCommunity(comm.id)}
-              className="bg-surface rounded-brand border border-slate-200 p-4 shadow-xs hover:border-slate-300 transition cursor-pointer space-y-2.5"
-            >
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <h2 className="text-sm font-bold text-slate-900 leading-snug">{comm.name}</h2>
-                  <p className="text-xs text-text-muted mt-0.5">{comm.city}</p>
-                </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {communities.map((comm) => (
+              <div
+                key={comm.id}
+                onClick={() => onSelectCommunity(comm.id)}
+                className="bg-white rounded-2xl border border-neutral-200 hover:border-black p-6 shadow-xs hover:shadow-md transition cursor-pointer flex flex-col justify-between group"
+              >
+                <div className="space-y-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <h2 className="text-base font-bold text-black group-hover:text-neutral-900 transition leading-snug">
+                        {comm.name}
+                      </h2>
+                      <p className="text-xs text-neutral-500 mt-0.5">{comm.city}</p>
+                    </div>
 
-                <span
-                  className={`px-2 py-0.5 rounded-full text-[10px] font-semibold flex items-center gap-1 shrink-0 ${
-                    comm.type === 'public'
-                      ? 'bg-blue-50 text-blue-700 border border-blue-200'
-                      : 'bg-purple-50 text-purple-700 border border-purple-200'
-                  }`}
-                >
-                  {comm.type === 'public' ? (
-                    <Globe className="w-3 h-3" />
-                  ) : (
-                    <Lock className="w-3 h-3" />
+                    <span
+                      className={`px-2.5 py-1 rounded-full text-[11px] font-bold flex items-center gap-1.5 shrink-0 ${
+                        comm.type === 'public'
+                          ? 'bg-neutral-100 text-neutral-900'
+                          : 'bg-neutral-900 text-white'
+                      }`}
+                    >
+                      {comm.type === 'public' ? (
+                        <Globe className="w-3 h-3" />
+                      ) : (
+                        <Lock className="w-3 h-3" />
+                      )}
+                      <span className="capitalize">{comm.type}</span>
+                    </span>
+                  </div>
+
+                  {comm.description && (
+                    <p className="text-xs text-neutral-600 line-clamp-2 leading-relaxed">
+                      {comm.description}
+                    </p>
                   )}
-                  <span className="capitalize">{comm.type}</span>
-                </span>
-              </div>
-
-              {comm.description && (
-                <p className="text-xs text-slate-600 line-clamp-2 leading-relaxed">
-                  {comm.description}
-                </p>
-              )}
-
-              <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-xs">
-                <div className="flex items-center gap-3 text-text-muted">
-                  <span className="flex items-center gap-1">
-                    <Users className="w-3.5 h-3.5 text-slate-400" />
-                    <span className="font-medium text-slate-800">{comm.memberCount}</span>
-                  </span>
-                  <span>•</span>
-                  <span>{comm.distanceBand}</span>
                 </div>
 
-                <div className="flex items-center gap-1 text-primary text-[11px] font-semibold">
-                  <span>{comm.membershipStatus === 'active' ? 'Joined' : 'View'}</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
+                <div className="flex items-center justify-between pt-4 mt-4 border-t border-neutral-100 text-xs">
+                  <div className="flex items-center gap-3 text-neutral-500">
+                    <span className="flex items-center gap-1 font-semibold text-black">
+                      <Users className="w-3.5 h-3.5 text-neutral-400" />
+                      <span>{comm.memberCount} members</span>
+                    </span>
+                    <span>•</span>
+                    <span>{comm.distanceBand}</span>
+                  </div>
+
+                  <div className="flex items-center gap-1 text-black font-bold group-hover:translate-x-0.5 transition-transform">
+                    <span>{comm.membershipStatus === 'active' ? 'Joined' : 'Explore'}</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </div>
                 </div>
               </div>
-            </div>
-          ))
+            ))}
+          </div>
         )}
       </div>
 

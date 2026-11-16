@@ -83,33 +83,35 @@ export function PhotoUploadStep({ onComplete }) {
   };
 
   return (
-    <div className="max-w-md mx-auto p-4 space-y-6 pt-6">
+    <div className="max-w-md mx-auto p-4 space-y-6 pt-10">
       <div className="text-center space-y-2">
-        <div className="inline-flex p-3 rounded-full bg-teal-50 text-primary border border-teal-100">
+        <div className="inline-flex p-4 rounded-full bg-neutral-100 text-black border border-neutral-200">
           <Camera className="w-8 h-8" />
         </div>
-        <h1 className="text-xl font-heading font-bold text-slate-900">Add Your Profile Photo</h1>
-        <p className="text-xs text-text-muted leading-relaxed">
-          Step 2 of 2: BorrowLoop is a trusted local community. A clear profile photo helps
-          neighbors recognize you during handovers.
+        <h1 className="text-3xl font-heading font-black tracking-tight text-black">
+          Add your profile photo
+        </h1>
+        <p className="text-sm text-neutral-500 leading-relaxed max-w-sm mx-auto">
+          Step 2 of 2: A clear profile photo builds trust and ensures smooth, verified peer
+          handovers.
         </p>
       </div>
 
       {error && (
-        <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-brand text-xs flex items-start gap-2">
-          <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
-          <span>{error}</span>
+        <div className="p-4 bg-red-50 border border-red-200 text-red-700 rounded-2xl text-xs flex items-start gap-2.5">
+          <AlertCircle className="w-4 h-4 mt-0.5 shrink-0 text-red-600" />
+          <span className="font-medium">{error}</span>
         </div>
       )}
 
-      <div className="bg-surface rounded-brand border border-slate-200 p-6 flex flex-col items-center justify-center space-y-4">
-        <div className="w-32 h-32 rounded-full border-2 border-dashed border-slate-300 overflow-hidden flex items-center justify-center bg-slate-50 relative group">
+      <div className="bg-white rounded-3xl border border-neutral-200 p-8 flex flex-col items-center justify-center space-y-5 shadow-sm">
+        <div className="w-36 h-36 rounded-full border-2 border-dashed border-neutral-300 hover:border-black overflow-hidden flex items-center justify-center bg-neutral-50 relative group transition cursor-pointer">
           {preview ? (
             <img src={preview} alt="Profile preview" className="w-full h-full object-cover" />
           ) : (
-            <div className="flex flex-col items-center gap-1 text-slate-400">
-              <Upload className="w-6 h-6" />
-              <span className="text-[10px]">Select Image</span>
+            <div className="flex flex-col items-center gap-1.5 text-neutral-400 group-hover:text-black transition">
+              <Upload className="w-7 h-7" />
+              <span className="text-xs font-semibold">Upload photo</span>
             </div>
           )}
           <input
@@ -120,8 +122,8 @@ export function PhotoUploadStep({ onComplete }) {
           />
         </div>
 
-        <p className="text-[11px] text-text-muted">
-          Supported: JPG, PNG, WebP (Max 10MB). EXIF location data is removed automatically.
+        <p className="text-xs text-neutral-500 text-center">
+          JPG, PNG or WebP up to 10MB. Location metadata is automatically stripped for your privacy.
         </p>
       </div>
 
@@ -129,9 +131,9 @@ export function PhotoUploadStep({ onComplete }) {
         type="button"
         onClick={handleUpload}
         disabled={loading || !preview}
-        className="w-full py-3 bg-primary hover:bg-primary-dark text-white rounded-brand text-xs font-semibold transition disabled:opacity-50 flex items-center justify-center gap-2"
+        className="w-full py-3.5 bg-black hover:bg-neutral-800 active:bg-neutral-900 text-white rounded-full text-sm font-bold transition shadow-xs disabled:opacity-50 flex items-center justify-center gap-2"
       >
-        {loading ? 'Uploading...' : 'Save Photo & Finish Setup'}
+        {loading ? 'Uploading...' : 'Save photo and finish setup'}
       </button>
     </div>
   );

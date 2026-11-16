@@ -23,11 +23,9 @@ import { BookingDetailScreen } from './screens/BookingDetailScreen.jsx';
 import { DisputeDetailScreen } from './screens/DisputeDetailScreen.jsx';
 import { ForgotPasswordScreen } from './screens/ForgotPasswordScreen.jsx';
 import { ResetPasswordScreen } from './screens/ResetPasswordScreen.jsx';
-import ConsentBanner from './components/ConsentBanner.jsx';
-import AdPreferencesModal from './components/AdPreferencesModal.jsx';
 
 function MainAppShell() {
-  const { user, requiresPhoto, setRequiresPhoto } = useAuth();
+  const { user, requiresPhoto, setRequiresPhoto, logout } = useAuth();
 
   const getInitialRoute = () => {
     if (typeof window !== 'undefined') {
@@ -79,7 +77,6 @@ function MainAppShell() {
   const [selectedItemId, setSelectedItemId] = useState(null);
   const [selectedBookingId, setSelectedBookingId] = useState(getInitialBookingId);
   const [selectedDisputeId, setSelectedDisputeId] = useState(getInitialDisputeId);
-  const [showAdPreferences, setShowAdPreferences] = useState(false);
 
   // Sync with browser navigation
   useEffect(() => {
@@ -168,224 +165,387 @@ function MainAppShell() {
     }
   }, [user, requiresPhoto]);
 
+  // Dynamic SEO Page Title & Robots Directive Management
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+
+    const titles = {
+      onboarding: 'BorrowLoop — Peer-to-Peer Community Rental & Sharing Marketplace',
+      communities: 'Explore Communities & Local Hubs — BorrowLoop',
+      'community-detail': 'Community Items & Members — BorrowLoop',
+      items: 'Browse Available Items & Equipment — BorrowLoop',
+      'item-detail': 'Item Details & Availability — BorrowLoop',
+      'create-item': 'List an Item for Rent — BorrowLoop',
+      'booking-request': 'Reserve Item & Escrow Hold — BorrowLoop',
+      'my-bookings': 'My Rentals & Lending Activity — BorrowLoop',
+      'booking-detail': 'Rental Booking Details — BorrowLoop',
+      wallet: 'Demo Money Wallet & Payouts — BorrowLoop',
+      profile: 'Member Profile & Trust Score — BorrowLoop',
+      notifications: 'Notifications & Alerts — BorrowLoop',
+      login: 'Log In to BorrowLoop',
+      signup: 'Join BorrowLoop Community',
+      'forgot-password': 'Reset Your Password — BorrowLoop',
+      'reset-password': 'Create New Password — BorrowLoop',
+      'dispute-detail': 'Dispute Resolution Case — BorrowLoop',
+    };
+
+    document.title = titles[currentScreen] || 'BorrowLoop — Community Sharing Marketplace';
+
+    // Protect private user screens from web crawler indexing
+    const privateScreens = new Set([
+      'wallet',
+      'my-bookings',
+      'booking-detail',
+      'profile',
+      'notifications',
+      'reset-password',
+      'dispute-detail',
+      'booking-request',
+    ]);
+
+    let robotsMeta = document.querySelector('meta[name="robots"]');
+    if (!robotsMeta) {
+      robotsMeta = document.createElement('meta');
+      robotsMeta.name = 'robots';
+      document.head.appendChild(robotsMeta);
+    }
+    if (privateScreens.has(currentScreen)) {
+      robotsMeta.content = 'noindex, nofollow';
+    } else {
+      robotsMeta.content =
+        'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1';
+    }
+  }, [currentScreen]);
+
   return (
     <div className="min-h-screen flex flex-col bg-background text-text">
-      {/* Top Header */}
-      <header className="sticky top-0 z-40 bg-surface border-b border-slate-200 px-4 py-3 flex items-center justify-between shadow-xs">
-        <div
-          className="flex items-center gap-2 cursor-pointer"
-          onClick={() => {
-            setSelectedCommunityId(null);
-            navigateTo(user ? 'communities' : 'onboarding');
-          }}
-        >
+      {/* Top Header (Uber sleek black aesthetic) */}
+      <header className="sticky top-0 z-40 bg-black text-white px-4 sm:px-8 py-3.5 flex items-center justify-between border-b border-neutral-800">
+        <div className="flex items-center gap-8">
           <div
-            className="w-7 h-7 text-primary"
-            dangerouslySetInnerHTML={{ __html: BRAND.logo.svg }}
-          />
-          <span className="font-heading font-bold text-lg tracking-tight text-primary-dark">
-            {BRAND.appName}
-          </span>
-        </div>
+            className="flex items-center gap-2.5 cursor-pointer"
+            onClick={() => {
+              setSelectedCommunityId(null);
+              navigateTo(user ? 'communities' : 'onboarding');
+            }}
+          >
+            <div
+              className="w-7 h-7 text-white"
+              dangerouslySetInnerHTML={{ __html: BRAND.logo.svg }}
+            />
+            <span className="font-heading font-black text-xl tracking-tight text-white">
+              {BRAND.appName}
+            </span>
+          </div>
 
-        {/* Header Right: Notification Bell & Demo Money Tag */}
-        <div className="flex items-center gap-2">
-          {user && (
-            <NotificationBell
-              onNavigate={(link) => {
-                const disputeMatch = link.match(/\/disputes\/([a-zA-Z0-9_-]+)/);
-                if (disputeMatch) {
-                  navigateTo('dispute-detail', { disputeId: disputeMatch[1] });
-                  return;
-                }
-                const bookingDisputeMatch = link.match(/\/bookings\/([a-zA-Z0-9_-]+)\/dispute/);
-                if (bookingDisputeMatch) {
-                  navigateTo('dispute-detail', { bookingId: bookingDisputeMatch[1] });
-                  return;
-                }
-                const match = link.match(/\/bookings\/([a-zA-Z0-9_-]+)/);
-                if (match) {
-                  navigateTo('booking-detail', { bookingId: match[1] });
-                } else if (link === '/notifications') {
-                  navigateTo('notifications');
+          {/* Desktop Nav Links */}
+          <nav className="hidden md:flex items-center gap-6 text-sm font-semibold text-neutral-300">
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedItemId(null);
+                navigateTo('items');
+              }}
+              className="hover:text-white transition"
+            >
+              Borrow
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (user) {
+                  navigateTo('create-item');
+                } else {
+                  navigateTo('signup');
                 }
               }}
-            />
-          )}
-          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800 border border-amber-300 shadow-xs">
+              className="hover:text-white transition"
+            >
+              Lend & Earn
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedCommunityId(null);
+                navigateTo('communities');
+              }}
+              className="hover:text-white transition"
+            >
+              Communities
+            </button>
+          </nav>
+        </div>
+
+        {/* Header Right */}
+        <div className="flex items-center gap-3">
+          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-400 text-black shadow-xs">
             Demo money
           </span>
+
+          {user ? (
+            <div className="flex items-center gap-2.5">
+              <NotificationBell
+                onNavigate={(link) => {
+                  const disputeMatch = link.match(/\/disputes\/([a-zA-Z0-9_-]+)/);
+                  if (disputeMatch) {
+                    navigateTo('dispute-detail', { disputeId: disputeMatch[1] });
+                    return;
+                  }
+                  const bookingDisputeMatch = link.match(/\/bookings\/([a-zA-Z0-9_-]+)\/dispute/);
+                  if (bookingDisputeMatch) {
+                    navigateTo('dispute-detail', { bookingId: bookingDisputeMatch[1] });
+                    return;
+                  }
+                  const match = link.match(/\/bookings\/([a-zA-Z0-9_-]+)/);
+                  if (match) {
+                    navigateTo('booking-detail', { bookingId: match[1] });
+                  } else if (link === '/notifications') {
+                    navigateTo('notifications');
+                  }
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => navigateTo('wallet')}
+                className="hidden sm:inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-neutral-800 hover:bg-neutral-700 text-white rounded-full text-xs font-bold transition border border-neutral-700"
+              >
+                <Wallet className="w-3.5 h-3.5 text-teal-400" />
+                <span>Wallet</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => navigateTo('profile')}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-neutral-900 hover:bg-neutral-800 text-white rounded-full text-xs font-semibold transition border border-neutral-700"
+              >
+                <UserIcon className="w-3.5 h-3.5 text-teal-400" />
+                <span className="max-w-[90px] truncate">
+                  {user.name?.split(' ')[0] || 'Account'}
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={logout}
+                className="text-xs text-neutral-400 hover:text-white transition px-2 py-1"
+                title="Log out"
+              >
+                Exit
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => navigateTo('login')}
+                className="text-xs sm:text-sm font-semibold text-white hover:text-neutral-300 transition px-2.5 py-1"
+              >
+                Log in
+              </button>
+              <button
+                type="button"
+                onClick={() => navigateTo('signup')}
+                className="bg-white hover:bg-neutral-200 text-black px-4 py-2 rounded-full font-bold text-xs sm:text-sm transition shadow-xs"
+              >
+                Sign up
+              </button>
+            </div>
+          )}
         </div>
       </header>
 
       {/* Screen Router */}
-      <main className="flex-1 max-w-lg mx-auto w-full">
+      <main className="flex-1 w-full">
         {currentScreen === 'onboarding' && (
           <OnboardingScreen onNavigate={(screen) => setCurrentScreen(screen)} />
         )}
-        {currentScreen === 'signup' && (
-          <SignUpScreen onNavigate={(screen) => setCurrentScreen(screen)} />
-        )}
-        {currentScreen === 'login' && (
-          <LoginScreen onNavigate={(screen) => setCurrentScreen(screen)} />
-        )}
-        {currentScreen === 'forgot-password' && (
-          <ForgotPasswordScreen onNavigate={(screen) => setCurrentScreen(screen)} />
-        )}
-        {currentScreen === 'reset-password' && (
-          <ResetPasswordScreen
-            initialToken={resetToken}
-            onNavigate={(screen) => setCurrentScreen(screen)}
-          />
-        )}
-        {currentScreen === 'verify-email' && (
-          <VerifyEmailScreen onNavigate={(screen) => setCurrentScreen(screen)} />
-        )}
-        {currentScreen === 'notifications' && (
-          <NotificationsScreen
-            onNavigate={(link) => {
-              const disputeMatch = link.match(/\/disputes\/([a-zA-Z0-9_-]+)/);
-              if (disputeMatch) {
-                navigateTo('dispute-detail', { disputeId: disputeMatch[1] });
-                return;
-              }
-              const bookingDisputeMatch = link.match(/\/bookings\/([a-zA-Z0-9_-]+)\/dispute/);
-              if (bookingDisputeMatch) {
-                navigateTo('dispute-detail', { bookingId: bookingDisputeMatch[1] });
-                return;
-              }
-              const match = link.match(/\/bookings\/([a-zA-Z0-9_-]+)/);
-              if (match) {
-                navigateTo('booking-detail', { bookingId: match[1] });
-              }
-            }}
-          />
-        )}
-        {currentScreen === 'photo-step' && (
-          <PhotoUploadStep
-            onComplete={() => {
-              setRequiresPhoto(false);
-              setCurrentScreen('communities');
-            }}
-          />
-        )}
-        {currentScreen === 'profile' && (
-          <ProfileScreen onNavigate={(screen) => setCurrentScreen(screen)} />
+
+        {/* Focused Auth and Form Screens */}
+        {[
+          'signup',
+          'login',
+          'forgot-password',
+          'reset-password',
+          'verify-email',
+          'photo-step',
+        ].includes(currentScreen) && (
+          <div className="max-w-md mx-auto px-4 py-10 w-full">
+            {currentScreen === 'signup' && (
+              <SignUpScreen onNavigate={(screen) => setCurrentScreen(screen)} />
+            )}
+            {currentScreen === 'login' && (
+              <LoginScreen onNavigate={(screen) => setCurrentScreen(screen)} />
+            )}
+            {currentScreen === 'forgot-password' && (
+              <ForgotPasswordScreen onNavigate={(screen) => setCurrentScreen(screen)} />
+            )}
+            {currentScreen === 'reset-password' && (
+              <ResetPasswordScreen
+                initialToken={resetToken}
+                onNavigate={(screen) => setCurrentScreen(screen)}
+              />
+            )}
+            {currentScreen === 'verify-email' && (
+              <VerifyEmailScreen onNavigate={(screen) => setCurrentScreen(screen)} />
+            )}
+            {currentScreen === 'photo-step' && (
+              <PhotoUploadStep
+                onComplete={() => {
+                  setRequiresPhoto(false);
+                  setCurrentScreen('communities');
+                }}
+              />
+            )}
+          </div>
         )}
 
-        {currentScreen === 'communities' && (
-          <CommunitiesScreen
-            onSelectCommunity={(id) => {
-              setSelectedCommunityId(id);
-              setCurrentScreen('community-detail');
-            }}
-          />
+        {/* Catalog, Detail, and Community Screens */}
+        {[
+          'communities',
+          'community-detail',
+          'items',
+          'item-detail',
+          'booking-request',
+          'booking-detail',
+          'dispute-detail',
+          'create-item',
+        ].includes(currentScreen) && (
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
+            {currentScreen === 'communities' && (
+              <CommunitiesScreen
+                onSelectCommunity={(id) => {
+                  setSelectedCommunityId(id);
+                  setCurrentScreen('community-detail');
+                }}
+              />
+            )}
+
+            {currentScreen === 'community-detail' && selectedCommunityId && (
+              <CommunityDetailScreen
+                communityId={selectedCommunityId}
+                onBack={() => {
+                  setSelectedCommunityId(null);
+                  setCurrentScreen('communities');
+                }}
+              />
+            )}
+
+            {currentScreen === 'items' && (
+              <ItemsBrowseScreen
+                onSelectItem={(id) => {
+                  setSelectedItemId(id);
+                  setCurrentScreen('item-detail');
+                }}
+                onCreateItem={() => setCurrentScreen('create-item')}
+              />
+            )}
+
+            {currentScreen === 'item-detail' && selectedItemId && (
+              <ItemDetailScreen
+                itemId={selectedItemId}
+                onBack={() => {
+                  setSelectedItemId(null);
+                  setCurrentScreen('items');
+                }}
+                onRequestBooking={(id) => {
+                  setSelectedItemId(id);
+                  setCurrentScreen('booking-request');
+                }}
+              />
+            )}
+
+            {currentScreen === 'booking-request' && selectedItemId && (
+              <BookingRequestScreen
+                itemId={selectedItemId}
+                onBack={() => navigateTo('item-detail')}
+                onSuccess={(newBooking) => {
+                  navigateTo('booking-detail', { bookingId: newBooking._id });
+                }}
+              />
+            )}
+
+            {currentScreen === 'booking-detail' && selectedBookingId && (
+              <BookingDetailScreen
+                bookingId={selectedBookingId}
+                onBack={() => navigateTo('my-bookings')}
+                onNavigate={navigateTo}
+              />
+            )}
+
+            {currentScreen === 'dispute-detail' && (
+              <DisputeDetailScreen
+                bookingId={selectedBookingId}
+                disputeId={selectedDisputeId}
+                onBack={() => {
+                  if (selectedBookingId) {
+                    navigateTo('booking-detail', { bookingId: selectedBookingId });
+                  } else {
+                    navigateTo('my-bookings');
+                  }
+                }}
+              />
+            )}
+
+            {currentScreen === 'create-item' && (
+              <CreateItemScreen
+                onBack={() => setCurrentScreen('items')}
+                onSuccess={(newItem) => {
+                  setSelectedItemId(newItem._id);
+                  setCurrentScreen('item-detail');
+                }}
+              />
+            )}
+          </div>
         )}
 
-        {currentScreen === 'community-detail' && selectedCommunityId && (
-          <CommunityDetailScreen
-            communityId={selectedCommunityId}
-            onBack={() => {
-              setSelectedCommunityId(null);
-              setCurrentScreen('communities');
-            }}
-          />
+        {/* User Account and Dashboard Screens */}
+        {['my-bookings', 'wallet', 'profile', 'notifications'].includes(currentScreen) && (
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 w-full">
+            {currentScreen === 'notifications' && (
+              <NotificationsScreen
+                onNavigate={(link) => {
+                  const disputeMatch = link.match(/\/disputes\/([a-zA-Z0-9_-]+)/);
+                  if (disputeMatch) {
+                    navigateTo('dispute-detail', { disputeId: disputeMatch[1] });
+                    return;
+                  }
+                  const bookingDisputeMatch = link.match(/\/bookings\/([a-zA-Z0-9_-]+)\/dispute/);
+                  if (bookingDisputeMatch) {
+                    navigateTo('dispute-detail', { bookingId: bookingDisputeMatch[1] });
+                    return;
+                  }
+                  const match = link.match(/\/bookings\/([a-zA-Z0-9_-]+)/);
+                  if (match) {
+                    navigateTo('booking-detail', { bookingId: match[1] });
+                  }
+                }}
+              />
+            )}
+
+            {currentScreen === 'my-bookings' && (
+              <MyBookingsScreen
+                onSelectBooking={(id) => {
+                  navigateTo('booking-detail', { bookingId: id });
+                }}
+              />
+            )}
+
+            {currentScreen === 'profile' && (
+              <ProfileScreen onNavigate={(screen) => setCurrentScreen(screen)} />
+            )}
+
+            {currentScreen === 'wallet' && <WalletScreen />}
+          </div>
         )}
 
-        {currentScreen === 'items' && (
-          <ItemsBrowseScreen
-            onSelectItem={(id) => {
-              setSelectedItemId(id);
-              setCurrentScreen('item-detail');
-            }}
-            onCreateItem={() => setCurrentScreen('create-item')}
-          />
+        {/* Footer (only on non-onboarding screens) */}
+        {currentScreen !== 'onboarding' && (
+          <footer className="py-6 text-center text-xs text-neutral-400 pb-24 md:pb-8 border-t border-neutral-100">
+            <span>&copy; {new Date().getFullYear()} BorrowLoop • Demo money mode</span>
+          </footer>
         )}
-
-        {currentScreen === 'item-detail' && selectedItemId && (
-          <ItemDetailScreen
-            itemId={selectedItemId}
-            onBack={() => {
-              setSelectedItemId(null);
-              setCurrentScreen('items');
-            }}
-            onRequestBooking={(id) => {
-              setSelectedItemId(id);
-              setCurrentScreen('booking-request');
-            }}
-          />
-        )}
-
-        {currentScreen === 'booking-request' && selectedItemId && (
-          <BookingRequestScreen
-            itemId={selectedItemId}
-            onBack={() => navigateTo('item-detail')}
-            onSuccess={(newBooking) => {
-              navigateTo('booking-detail', { bookingId: newBooking._id });
-            }}
-          />
-        )}
-
-        {currentScreen === 'my-bookings' && (
-          <MyBookingsScreen
-            onSelectBooking={(id) => {
-              navigateTo('booking-detail', { bookingId: id });
-            }}
-          />
-        )}
-
-        {currentScreen === 'booking-detail' && selectedBookingId && (
-          <BookingDetailScreen
-            bookingId={selectedBookingId}
-            onBack={() => navigateTo('my-bookings')}
-            onNavigate={navigateTo}
-          />
-        )}
-
-        {currentScreen === 'dispute-detail' && (
-          <DisputeDetailScreen
-            bookingId={selectedBookingId}
-            disputeId={selectedDisputeId}
-            onBack={() => {
-              if (selectedBookingId) {
-                navigateTo('booking-detail', { bookingId: selectedBookingId });
-              } else {
-                navigateTo('my-bookings');
-              }
-            }}
-          />
-        )}
-
-        {currentScreen === 'create-item' && (
-          <CreateItemScreen
-            onBack={() => setCurrentScreen('items')}
-            onSuccess={(newItem) => {
-              setSelectedItemId(newItem._id);
-              setCurrentScreen('item-detail');
-            }}
-          />
-        )}
-
-        {currentScreen === 'wallet' && <WalletScreen />}
-
-        {/* Footer with Ad Preferences Link */}
-        <footer className="py-4 text-center text-xs text-text-muted pb-20">
-          <button
-            type="button"
-            onClick={() => setShowAdPreferences(true)}
-            className="hover:text-primary transition underline underline-offset-2"
-          >
-            Ad preferences
-          </button>
-        </footer>
       </main>
 
-      {/* Ad Consent Banner & Preferences Modal */}
-      <ConsentBanner onOpenPreferences={() => setShowAdPreferences(true)} />
-      <AdPreferencesModal isOpen={showAdPreferences} onClose={() => setShowAdPreferences(false)} />
-
-      {/* Mobile Bottom Navigation Bar */}
-      <nav className="fixed bottom-0 left-0 right-0 z-50 bg-surface border-t border-slate-200 max-w-lg mx-auto flex items-center justify-around py-2 px-3 shadow-lg">
+      {/* Mobile Bottom Navigation Bar (Uber-styled black bar) */}
+      <nav className="fixed bottom-0 left-0 right-0 z-50 bg-black text-white border-t border-neutral-800 flex items-center justify-around py-2 px-3 shadow-lg md:hidden">
         <button
           type="button"
           onClick={() => {
@@ -395,8 +555,8 @@ function MainAppShell() {
           }}
           className={`flex flex-col items-center gap-1 p-2 min-w-[56px] focus:outline-none ${
             currentScreen === 'communities' || currentScreen === 'community-detail'
-              ? 'text-primary'
-              : 'text-text-muted'
+              ? 'text-white font-bold'
+              : 'text-neutral-400 hover:text-white'
           }`}
         >
           <Users className="w-5 h-5" />
@@ -413,8 +573,8 @@ function MainAppShell() {
             currentScreen === 'items' ||
             currentScreen === 'item-detail' ||
             currentScreen === 'create-item'
-              ? 'text-primary'
-              : 'text-text-muted'
+              ? 'text-white font-bold'
+              : 'text-neutral-400 hover:text-white'
           }`}
         >
           <Search className="w-5 h-5" />
@@ -432,8 +592,8 @@ function MainAppShell() {
             currentScreen === 'my-bookings' ||
             currentScreen === 'booking-detail' ||
             currentScreen === 'booking-request'
-              ? 'text-primary'
-              : 'text-text-muted hover:text-slate-900'
+              ? 'text-white font-bold'
+              : 'text-neutral-400 hover:text-white'
           }`}
         >
           <Calendar className="w-5 h-5" />
@@ -447,7 +607,9 @@ function MainAppShell() {
             setCurrentScreen(user ? 'wallet' : 'login');
           }}
           className={`flex flex-col items-center gap-1 p-2 min-w-[56px] focus:outline-none ${
-            currentScreen === 'wallet' ? 'text-primary' : 'text-text-muted hover:text-slate-900'
+            currentScreen === 'wallet'
+              ? 'text-white font-bold'
+              : 'text-neutral-400 hover:text-white'
           }`}
         >
           <Wallet className="w-5 h-5" />
@@ -460,7 +622,9 @@ function MainAppShell() {
             setCurrentScreen(user ? 'profile' : 'login');
           }}
           className={`flex flex-col items-center gap-1 p-2 min-w-[56px] focus:outline-none ${
-            currentScreen === 'profile' ? 'text-primary' : 'text-text-muted'
+            currentScreen === 'profile'
+              ? 'text-white font-bold'
+              : 'text-neutral-400 hover:text-white'
           }`}
         >
           <UserIcon className="w-5 h-5" />

@@ -295,37 +295,38 @@ export function BookingDetailScreen({ bookingId, onBack, onNavigate }) {
   }
 
   return (
-    <div className="p-4 pb-28 max-w-lg mx-auto">
+    <div className="max-w-4xl mx-auto space-y-6 pb-24">
       {/* Top Bar */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between">
         <button
           type="button"
           onClick={handleBack}
-          className="p-2 hover:bg-slate-100 rounded-full transition-colors"
+          className="inline-flex items-center gap-2 text-xs font-bold text-neutral-600 hover:text-black transition"
           aria-label="Back"
         >
-          <ArrowLeft className="w-5 h-5 text-slate-700" />
+          <ArrowLeft className="w-4 h-4" />
+          <span>Back to bookings</span>
         </button>
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-semibold px-2 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-300">
+        <div className="flex items-center gap-2.5">
+          <span className="text-xs font-bold px-3 py-1 rounded-full bg-amber-400 text-black shadow-xs">
             Demo money
           </span>
-          <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full uppercase tracking-wider bg-slate-100 text-slate-800">
+          <span className="text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider bg-black text-white">
             {booking.status}
           </span>
         </div>
       </div>
 
       {actionNotice && (
-        <div className="mb-4 p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center gap-2 text-emerald-800 text-sm">
-          <CheckCircle2 className="w-5 h-5 shrink-0" />
+        <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-center gap-2.5 text-emerald-800 text-xs font-semibold">
+          <CheckCircle2 className="w-5 h-5 shrink-0 text-emerald-600" />
           <span>{actionNotice}</span>
         </div>
       )}
 
       {error && (
-        <div className="mb-4 p-3 bg-rose-50 border border-rose-200 rounded-xl flex items-start gap-2 text-rose-800 text-sm">
-          <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
+        <div className="p-4 bg-red-50 border border-red-200 rounded-2xl flex items-start gap-2.5 text-red-700 text-xs font-medium">
+          <AlertCircle className="w-5 h-5 shrink-0 text-red-600 mt-0.5" />
           <span>{error}</span>
         </div>
       )}

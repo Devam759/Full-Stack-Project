@@ -2,11 +2,114 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
+    <title>BorrowLoop — Peer-to-Peer Community Rental &amp; Sharing Marketplace</title>
+
+    <!-- Enterprise SEO Meta Tags -->
     <meta
-      name="viewport"
-      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+      name="description"
+      content="BorrowLoop is a hyper-local peer-to-peer equipment and item rental network. Borrow drills, cameras, camping gear, and party supplies from trusted neighbors with zero-fraud escrow and QR handovers."
     />
-    <title>BorrowLoop - Community Borrowing</title>
+    <meta
+      name="keywords"
+      content="peer-to-peer rentals, borrow items, community equipment sharing, rent cameras, rent tools, neighborhood marketplace, sustainable consumption, circular economy"
+    />
+    <meta name="author" content="BorrowLoop" />
+    <meta
+      name="robots"
+      content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1"
+    />
+    <meta name="theme-color" content="#000000" />
+    <meta name="color-scheme" content="light" />
+
+    <!-- Canonical & Alternate Links -->
+    <link rel="canonical" href="https://borrowloop.org/" />
+
+    <!-- Favicon & PWA Icons -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/favicon.svg" />
+    <link rel="manifest" href="/site.webmanifest" />
+
+    <!-- Open Graph (Facebook / LinkedIn / WhatsApp) -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="BorrowLoop" />
+    <meta
+      property="og:title"
+      content="BorrowLoop — Peer-to-Peer Community Rental &amp; Sharing Marketplace"
+    />
+    <meta
+      property="og:description"
+      content="Borrow drills, cameras, camping gear, and electronics from trusted neighbors with secure escrow holds and QR handovers."
+    />
+    <meta property="og:url" content="https://borrowloop.org/" />
+    <meta property="og:image" content="https://borrowloop.org/og-preview.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="BorrowLoop Community Sharing &amp; Rental Marketplace" />
+    <meta property="og:locale" content="en_US" />
+
+    <!-- Twitter / X Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:site" content="@borrowloop" />
+    <meta name="twitter:creator" content="@borrowloop" />
+    <meta name="twitter:title" content="BorrowLoop — Peer-to-Peer Community Rental Marketplace" />
+    <meta
+      name="twitter:description"
+      content="Borrow equipment and tools from verified neighbors with escrow protection and verified condition checks."
+    />
+    <meta name="twitter:image" content="https://borrowloop.org/og-preview.png" />
+
+    <!-- Schema.org JSON-LD Structured Data: Organization & WebSite -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "Organization",
+            "@id": "https://borrowloop.org/#organization",
+            "name": "BorrowLoop",
+            "url": "https://borrowloop.org",
+            "logo": {
+              "@type": "ImageObject",
+              "url": "https://borrowloop.org/favicon.svg",
+              "width": 512,
+              "height": 512
+            },
+            "description": "Hyper-local peer-to-peer equipment and item rental network with zero-fraud escrow and verified QR handovers.",
+            "sameAs": ["https://twitter.com/borrowloop", "https://github.com/borrowloop"]
+          },
+          {
+            "@type": "WebSite",
+            "@id": "https://borrowloop.org/#website",
+            "url": "https://borrowloop.org",
+            "name": "BorrowLoop",
+            "publisher": {
+              "@id": "https://borrowloop.org/#organization"
+            },
+            "potentialAction": {
+              "@type": "SearchAction",
+              "target": {
+                "@type": "EntryPoint",
+                "urlTemplate": "https://borrowloop.org/items?q={search_term_string}"
+              },
+              "query-input": "required name=search_term_string"
+            }
+          },
+          {
+            "@type": "WebApplication",
+            "@id": "https://borrowloop.org/#webapp",
+            "name": "BorrowLoop Web",
+            "applicationCategory": "BusinessApplication",
+            "operatingSystem": "All",
+            "offers": {
+              "@type": "Offer",
+              "price": "0",
+              "priceCurrency": "INR"
+            }
+          }
+        ]
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>

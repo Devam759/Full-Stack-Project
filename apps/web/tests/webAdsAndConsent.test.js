@@ -5,7 +5,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import AdSlot, { clearAdsConfigCache } from '../src/components/AdSlot.jsx';
 import ConsentBanner from '../src/components/ConsentBanner.jsx';
 import AdPreferencesModal from '../src/components/AdPreferencesModal.jsx';
-import { CONSENT_STORAGE_KEY, getStoredConsent, setStoredConsent } from '../src/utils/adConsent.js';
+import { setStoredConsent } from '../src/utils/adConsent.js';
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -38,7 +38,7 @@ describe('Sub-step 9g: User Web App Ads & Consent System', () => {
     vi.restoreAllMocks();
   });
 
-  it('no consent = no ad slot rendered and no script loaded', async () => {
+  it('ads render automatically without prior consent prompt', async () => {
     global.fetch = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({
@@ -54,8 +54,13 @@ describe('Sub-step 9g: User Web App Ads & Consent System', () => {
       );
     });
 
-    expect(container.innerHTML).toBe('');
-    expect(document.querySelector('script[src*="pagead2.googlesyndication.com"]')).toBeNull();
+    // Automatically rendered without needing prompt or opt-in
+    expect(container.querySelector('[data-testid="ad-slot-home_banner"]')).not.toBeNull();
+    const insTag = container.querySelector('ins.adsbygoogle');
+    expect(insTag).not.toBeNull();
+    expect(insTag.getAttribute('data-ad-client')).toBe('ca-pub-1234567890123456');
+    expect(insTag.getAttribute('data-ad-slot')).toBe('1234567890');
+    expect(document.querySelector('script[src*="pagead2.googlesyndication.com"]')).not.toBeNull();
   });
 
   it('declined consent = no ad slot rendered and no script loaded', async () => {
@@ -164,51 +169,21 @@ describe('Sub-step 9g: User Web App Ads & Consent System', () => {
     expect(scripts[0].src).toContain('client=ca-pub-1234567890123456');
   });
 
-  it('consent re-prompt is triggered after 180 days', () => {
-    // Save consent timestamped 181 days ago
-    const past181Days = new Date(Date.now() - 181 * 24 * 60 * 60 * 1000).toISOString();
-    localStorage.setItem(
-      CONSENT_STORAGE_KEY,
-      JSON.stringify({ consented: true, timestamp: past181Days }),
-    );
-
-    // getStoredConsent() must treat expired record as null
-    expect(getStoredConsent()).toBeNull();
-
-    // ConsentBanner must render prompt again
+  it('consent banner is suppressed so no ad preferences banner is shown to users', () => {
     act(() => {
       root.render(React.createElement(ConsentBanner, { onOpenPreferences: vi.fn() }));
     });
 
-    expect(container.textContent).toContain('Privacy & Ad Preferences');
-    expect(container.textContent).toContain('Accept Ads');
-    expect(container.textContent).toContain('Decline Ads');
+    expect(container.innerHTML).toBe('');
+    expect(container.textContent).not.toContain('Privacy & Ad Preferences');
   });
 
-  it('footer link / modal allows withdrawing consent at any time', async () => {
-    setStoredConsent(true);
-    expect(getStoredConsent().consented).toBe(true);
-
+  it('ad preferences modal is suppressed and renders null', () => {
     const onClose = vi.fn();
     act(() => {
       root.render(React.createElement(AdPreferencesModal, { isOpen: true, onClose }));
     });
 
-    expect(container.textContent).toContain('Current Consent Status:');
-    expect(container.textContent).toContain('Ads Allowed');
-
-    // Click "Withdraw Ad Consent"
-    const withdrawBtn = Array.from(container.querySelectorAll('button')).find((b) =>
-      b.textContent.includes('Withdraw Ad Consent'),
-    );
-    expect(withdrawBtn).toBeDefined();
-
-    act(() => {
-      withdrawBtn.click();
-    });
-
-    // Consent is withdrawn in localStorage and UI reflects "Ads Declined"
-    expect(getStoredConsent().consented).toBe(false);
-    expect(container.textContent).toContain('Ads Declined');
+    expect(container.innerHTML).toBe('');
   });
 });

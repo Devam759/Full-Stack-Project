@@ -97,7 +97,8 @@ export function AdSlot({ placement, currentScreen }) {
     ALLOWED_SCREENS.includes(currentScreen) &&
     !RESTRICTED_SCREENS.includes(currentScreen);
 
-  const hasConsent = Boolean(consent && consent.consented === true);
+  // Automatically allow ads on eligible screens without requiring user prompt
+  const hasConsent = consent ? consent.consented !== false : true;
   const isMasterOn = Boolean(adsConfig && adsConfig.masterEnabled === true);
   const placementConfig = isMasterOn
     ? (adsConfig.placements || []).find((p) => p.placement === placement)
@@ -139,15 +140,15 @@ export function AdSlot({ placement, currentScreen }) {
 
   return (
     <div
-      className="my-3 w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 flex flex-col items-center justify-center text-center overflow-hidden"
+      className="my-4 w-full bg-neutral-50 border border-neutral-200 rounded-2xl p-3 flex flex-col items-center justify-center text-center overflow-hidden"
       data-testid={`ad-slot-${placement}`}
       data-placement={placement}
     >
-      <div className="flex items-center justify-between w-full px-1 mb-1">
-        <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">
+      <div className="flex items-center justify-between w-full px-1 mb-1.5">
+        <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest">
           Sponsored
         </span>
-        <span className="text-[10px] text-slate-400">Google AdSense</span>
+        <span className="text-[10px] font-medium text-neutral-400">Google AdSense</span>
       </div>
 
       <ins

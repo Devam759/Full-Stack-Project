@@ -1,0 +1,20 @@
+# BorrowLoop Robots Exclusion Standard (RFC 9309)
+# https://borrowloop.org
+User-agent: *
+Allow: /
+Allow: /communities
+Allow: /items
+Allow: /login
+Allow: /signup
+
+# Disallow private user authenticated, monetary, and sensitive screens
+Disallow: /wallet
+Disallow: /bookings/
+Disallow: /disputes/
+Disallow: /notifications
+Disallow: /profile
+Disallow: /reset-password
+Disallow: /api/
+
+# Canonical Sitemap index
+Sitemap: https://borrowloop.org/sitemap.xml

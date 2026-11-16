@@ -211,34 +211,36 @@ export function CreateItemScreen({ onBack, onSuccess }) {
   };
 
   return (
-    <div className="p-4 pb-24 space-y-5">
+    <div className="max-w-2xl mx-auto space-y-6 pb-20">
       <button
         type="button"
         onClick={onBack}
-        className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900"
+        className="inline-flex items-center gap-2 text-xs font-bold text-neutral-600 hover:text-black transition"
       >
         <ArrowLeft className="w-4 h-4" />
         <span>Back to items</span>
       </button>
 
       <div>
-        <h1 className="text-xl font-heading font-bold text-slate-900">List an Item</h1>
-        <p className="text-xs text-text-muted mt-0.5">
-          Share your items with neighbors and earn demo rent
+        <h1 className="text-3xl font-heading font-black tracking-tight text-black">List an item</h1>
+        <p className="text-sm text-neutral-500 mt-1">
+          Share high-utility items with neighbors and earn demo rental income.
         </p>
       </div>
 
       {error && (
-        <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-xl text-xs flex items-center gap-2">
+        <div className="p-4 bg-red-50 border border-red-200 text-red-700 rounded-2xl text-xs flex items-center gap-2.5">
           <ShieldAlert className="w-4 h-4 shrink-0 text-red-600" />
-          <span>{error}</span>
+          <span className="font-medium">{error}</span>
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-6">
         {/* Title */}
         <div>
-          <label className="block text-xs font-semibold text-slate-700 mb-1">Item Title *</label>
+          <label className="block text-xs font-bold text-neutral-800 uppercase tracking-wider mb-1.5">
+            Item title *
+          </label>
           <input
             type="text"
             required
@@ -246,21 +248,23 @@ export function CreateItemScreen({ onBack, onSuccess }) {
             maxLength={100}
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="e.g. Bosch 18V Cordless Hammer Drill"
-            className="w-full px-3 py-2 bg-surface border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-xs"
+            placeholder="e.g. Sony Alpha A7 III Camera Body"
+            className="w-full px-4 py-3 bg-neutral-100 hover:bg-neutral-100/80 focus:bg-white border border-transparent focus:border-black rounded-xl text-sm transition outline-none"
           />
         </div>
 
         {/* Category */}
         <div>
-          <label className="block text-xs font-semibold text-slate-700 mb-1">Category *</label>
+          <label className="block text-xs font-bold text-neutral-800 uppercase tracking-wider mb-1.5">
+            Category *
+          </label>
           <select
             value={category}
             onChange={(e) => {
               setCategory(e.target.value);
               setElectronicsWarningAccepted(false);
             }}
-            className="w-full px-3 py-2 bg-surface border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-xs"
+            className="w-full px-4 py-3 bg-neutral-100 hover:bg-neutral-100/80 focus:bg-white border border-transparent focus:border-black rounded-xl text-sm transition outline-none cursor-pointer"
           >
             {CATEGORIES.map((c) => (
               <option key={c.value} value={c.value}>
@@ -272,23 +276,23 @@ export function CreateItemScreen({ onBack, onSuccess }) {
 
         {/* Data Sensitive Category Warning (Rule 6) */}
         {isDataSensitive && (
-          <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900 space-y-2">
-            <div className="flex items-start gap-2">
-              <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-              <div className="font-semibold">Electronic Device Data Advisory</div>
+          <div className="p-4 bg-neutral-50 border border-neutral-200 rounded-2xl text-xs text-neutral-900 space-y-2.5">
+            <div className="flex items-start gap-2.5">
+              <AlertTriangle className="w-4 h-4 text-black shrink-0 mt-0.5" />
+              <div className="font-bold text-black">Electronic device data advisory</div>
             </div>
-            <p className="text-[11px] leading-relaxed">
+            <p className="text-xs text-neutral-600 leading-relaxed">
               Before lending electronics that store personal files or accounts, make sure all
               private data is cleared and factory reset.
             </p>
-            <label className="flex items-start gap-2 pt-1 cursor-pointer">
+            <label className="flex items-start gap-2.5 pt-1 cursor-pointer">
               <input
                 type="checkbox"
                 checked={electronicsWarningAccepted}
                 onChange={(e) => setElectronicsWarningAccepted(e.target.checked)}
-                className="mt-0.5 accent-primary"
+                className="mt-0.5 accent-black"
               />
-              <span className="text-[11px] font-medium text-amber-950">
+              <span className="text-xs font-semibold text-black">
                 I understand and agree to wipe all private accounts and files prior to handover.
               </span>
             </label>
@@ -297,11 +301,13 @@ export function CreateItemScreen({ onBack, onSuccess }) {
 
         {/* Condition */}
         <div>
-          <label className="block text-xs font-semibold text-slate-700 mb-1">Condition *</label>
+          <label className="block text-xs font-bold text-neutral-800 uppercase tracking-wider mb-1.5">
+            Condition *
+          </label>
           <select
             value={condition}
             onChange={(e) => setCondition(e.target.value)}
-            className="w-full px-3 py-2 bg-surface border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-xs"
+            className="w-full px-4 py-3 bg-neutral-100 hover:bg-neutral-100/80 focus:bg-white border border-transparent focus:border-black rounded-xl text-sm transition outline-none cursor-pointer"
           >
             {CONDITIONS.map((c) => (
               <option key={c.value} value={c.value}>
@@ -313,31 +319,31 @@ export function CreateItemScreen({ onBack, onSuccess }) {
 
         {/* Photos (Cloudinary upload) */}
         <div>
-          <label className="block text-xs font-semibold text-slate-700 mb-1">
+          <label className="block text-xs font-bold text-neutral-800 uppercase tracking-wider mb-2">
             Photos (1 to {BUSINESS_CONFIG.MAX_ITEM_PHOTOS}) *
           </label>
 
-          <div className="grid grid-cols-3 gap-2 mb-2">
+          <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 mb-2">
             {photos.map((url, idx) => (
               <div
                 key={url}
-                className="relative aspect-square rounded-lg overflow-hidden border border-slate-200 group"
+                className="relative aspect-square rounded-2xl overflow-hidden border border-neutral-200 group"
               >
                 <img src={url} alt="" className="w-full h-full object-cover" />
                 <button
                   type="button"
                   onClick={() => removePhoto(idx)}
-                  className="absolute top-1 right-1 p-1 bg-red-600 text-white rounded-full opacity-80 hover:opacity-100 transition shadow-xs"
+                  className="absolute top-1.5 right-1.5 p-1 bg-black/80 hover:bg-black text-white rounded-full transition shadow-xs"
                 >
-                  <Trash2 className="w-3 h-3" />
+                  <Trash2 className="w-3.5 h-3.5" />
                 </button>
               </div>
             ))}
 
             {photos.length < BUSINESS_CONFIG.MAX_ITEM_PHOTOS && (
-              <label className="aspect-square rounded-lg border-2 border-dashed border-slate-300 hover:border-primary transition flex flex-col items-center justify-center cursor-pointer text-slate-400 hover:text-primary bg-slate-50">
-                <Upload className="w-5 h-5 mb-1" />
-                <span className="text-[10px] font-medium">Add Photo</span>
+              <label className="aspect-square rounded-2xl border-2 border-dashed border-neutral-300 hover:border-black transition flex flex-col items-center justify-center cursor-pointer text-neutral-400 hover:text-black bg-neutral-50 group">
+                <Upload className="w-6 h-6 mb-1 text-neutral-400 group-hover:text-black transition" />
+                <span className="text-xs font-semibold">Add Photo</span>
                 <input
                   type="file"
                   accept="image/jpeg,image/png,image/webp"
@@ -350,38 +356,42 @@ export function CreateItemScreen({ onBack, onSuccess }) {
             )}
           </div>
           {uploading && (
-            <p className="text-xs text-primary animate-pulse">Uploading photos to storage...</p>
+            <p className="text-xs text-neutral-600 font-semibold animate-pulse">
+              Uploading photos...
+            </p>
           )}
         </div>
 
         {/* Description */}
         <div>
-          <label className="block text-xs font-semibold text-slate-700 mb-1">Description *</label>
+          <label className="block text-xs font-bold text-neutral-800 uppercase tracking-wider mb-1.5">
+            Description *
+          </label>
           <textarea
             required
-            rows={3}
+            rows={4}
             minLength={10}
             maxLength={2000}
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder="Describe what's included, rules for care, and any pickup requirements."
-            className="w-full px-3 py-2 bg-surface border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-xs"
+            placeholder="Describe features, accessories included, usage guidelines, and preferred handover spots."
+            className="w-full px-4 py-3 bg-neutral-100 hover:bg-neutral-100/80 focus:bg-white border border-transparent focus:border-black rounded-xl text-sm transition outline-none resize-none"
           />
         </div>
 
         {/* Pricing Card - Demo Money */}
-        <div className="p-3.5 bg-surface border border-slate-200 rounded-xl space-y-3 shadow-xs">
-          <div className="flex items-center justify-between pb-1 border-b border-slate-100">
-            <span className="text-xs font-semibold text-slate-800">Pricing & Security Deposit</span>
-            <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-amber-100 text-amber-800 border border-amber-300">
+        <div className="p-6 bg-white border border-neutral-200 rounded-3xl space-y-4 shadow-xs">
+          <div className="flex items-center justify-between pb-2 border-b border-neutral-100">
+            <span className="text-sm font-bold text-black">Pricing &amp; Security Deposit</span>
+            <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-amber-400 text-black shadow-xs">
               Demo money
             </span>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-[11px] font-medium text-slate-700 mb-1">
-                Daily Rent (₹) *
+              <label className="block text-xs font-bold text-neutral-700 uppercase tracking-wider mb-1">
+                Daily rent (₹) *
               </label>
               <input
                 type="number"
@@ -390,12 +400,12 @@ export function CreateItemScreen({ onBack, onSuccess }) {
                 required
                 value={rentRupees}
                 onChange={(e) => setRentRupees(e.target.value)}
-                className="w-full px-2.5 py-1.5 bg-background border border-slate-200 rounded text-sm font-semibold"
+                className="w-full px-4 py-3 bg-neutral-100 hover:bg-neutral-100/80 focus:bg-white border border-transparent focus:border-black rounded-xl text-sm font-bold outline-none transition"
               />
             </div>
             <div>
-              <label className="block text-[11px] font-medium text-slate-700 mb-1">
-                Security Deposit (₹) *
+              <label className="block text-xs font-bold text-neutral-700 uppercase tracking-wider mb-1">
+                Security deposit (₹) *
               </label>
               <input
                 type="number"
@@ -404,14 +414,14 @@ export function CreateItemScreen({ onBack, onSuccess }) {
                 required
                 value={depositRupees}
                 onChange={(e) => setDepositRupees(e.target.value)}
-                className="w-full px-2.5 py-1.5 bg-background border border-slate-200 rounded text-sm font-semibold"
+                className="w-full px-4 py-3 bg-neutral-100 hover:bg-neutral-100/80 focus:bg-white border border-transparent focus:border-black rounded-xl text-sm font-bold outline-none transition"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-[11px] font-medium text-slate-700 mb-1">
-              Late Fee per Day (₹, optional)
+            <label className="block text-xs font-bold text-neutral-700 uppercase tracking-wider mb-1">
+              Late fee per day (₹, optional)
             </label>
             <input
               type="number"
@@ -419,14 +429,14 @@ export function CreateItemScreen({ onBack, onSuccess }) {
               max="10000"
               value={lateFeeRupees}
               onChange={(e) => setLateFeeRupees(e.target.value)}
-              className="w-full px-2.5 py-1.5 bg-background border border-slate-200 rounded text-sm"
+              className="w-full px-4 py-3 bg-neutral-100 hover:bg-neutral-100/80 focus:bg-white border border-transparent focus:border-black rounded-xl text-sm outline-none transition"
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3 pt-1">
+          <div className="grid grid-cols-2 gap-4 pt-1">
             <div>
-              <label className="block text-[11px] font-medium text-slate-700 mb-1">
-                Min Days (1-30)
+              <label className="block text-xs font-bold text-neutral-700 uppercase tracking-wider mb-1">
+                Min days (1-30)
               </label>
               <input
                 type="number"
@@ -434,12 +444,12 @@ export function CreateItemScreen({ onBack, onSuccess }) {
                 max="30"
                 value={minDays}
                 onChange={(e) => setMinDays(e.target.value)}
-                className="w-full px-2.5 py-1.5 bg-background border border-slate-200 rounded text-xs"
+                className="w-full px-4 py-3 bg-neutral-100 hover:bg-neutral-100/80 focus:bg-white border border-transparent focus:border-black rounded-xl text-sm outline-none transition"
               />
             </div>
             <div>
-              <label className="block text-[11px] font-medium text-slate-700 mb-1">
-                Max Days (1-30)
+              <label className="block text-xs font-bold text-neutral-700 uppercase tracking-wider mb-1">
+                Max days (1-30)
               </label>
               <input
                 type="number"
@@ -447,7 +457,7 @@ export function CreateItemScreen({ onBack, onSuccess }) {
                 max="30"
                 value={maxDays}
                 onChange={(e) => setMaxDays(e.target.value)}
-                className="w-full px-2.5 py-1.5 bg-background border border-slate-200 rounded text-xs"
+                className="w-full px-4 py-3 bg-neutral-100 hover:bg-neutral-100/80 focus:bg-white border border-transparent focus:border-black rounded-xl text-sm outline-none transition"
               />
             </div>
           </div>
@@ -455,30 +465,30 @@ export function CreateItemScreen({ onBack, onSuccess }) {
 
         {/* Community Visibility Selection (Rule 1) */}
         <div>
-          <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-            Select Communities to Share With *
+          <label className="block text-xs font-bold text-neutral-800 uppercase tracking-wider mb-2">
+            Select communities to share with *
           </label>
           {availableCommunities.length === 0 ? (
-            <p className="text-xs text-text-muted bg-slate-50 p-2.5 rounded-lg border border-slate-200">
+            <p className="text-xs text-neutral-600 bg-neutral-50 p-4 rounded-2xl border border-neutral-200">
               You haven&apos;t joined any communities yet. Join a community first before listing
               items!
             </p>
           ) : (
-            <div className="space-y-1.5">
+            <div className="space-y-2">
               {availableCommunities.map((c) => (
                 <label
                   key={c._id}
-                  className="flex items-center gap-2.5 p-2 bg-surface border border-slate-200 rounded-lg text-xs cursor-pointer hover:bg-slate-50 transition"
+                  className="flex items-center gap-3 p-3.5 bg-white border border-neutral-200 rounded-2xl text-xs cursor-pointer hover:border-black transition"
                 >
                   <input
                     type="checkbox"
                     checked={selectedCommunities.includes(c._id)}
                     onChange={() => toggleCommunity(c._id)}
-                    className="accent-primary"
+                    className="accent-black w-4 h-4 rounded"
                   />
                   <div className="flex-1">
-                    <span className="font-semibold text-slate-800">{c.name}</span>
-                    <span className="text-[11px] text-text-muted ml-1.5">({c.city})</span>
+                    <span className="font-bold text-black text-sm">{c.name}</span>
+                    <span className="text-xs text-neutral-500 ml-2">({c.city})</span>
                   </div>
                 </label>
               ))}
@@ -489,9 +499,9 @@ export function CreateItemScreen({ onBack, onSuccess }) {
         <button
           type="submit"
           disabled={submitting || uploading || availableCommunities.length === 0}
-          className="w-full py-2.5 px-4 bg-primary text-white text-sm font-semibold rounded-xl hover:bg-primary-dark transition shadow-md disabled:opacity-50 mt-4"
+          className="w-full py-4 bg-black hover:bg-neutral-800 active:bg-neutral-900 text-white text-sm font-bold rounded-full transition shadow-xs disabled:opacity-50 mt-4"
         >
-          {submitting ? 'Listing Item...' : 'Publish Item Listing'}
+          {submitting ? 'Listing item...' : 'Publish item listing'}
         </button>
       </form>
     </div>

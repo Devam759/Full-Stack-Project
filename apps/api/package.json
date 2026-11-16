@@ -26,6 +26,7 @@
     "pino": "^9.6.0",
     "pino-http": "^10.4.0",
     "socket.io": "^4.8.4",
+    "swagger-ui-express": "^5.0.1",
     "uuid": "^11.0.5",
     "zod": "^4.6.7"
   },

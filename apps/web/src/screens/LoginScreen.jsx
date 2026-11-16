@@ -30,58 +30,64 @@ export function LoginScreen({ onNavigate }) {
   };
 
   return (
-    <div className="max-w-md mx-auto p-4 space-y-5 pt-8">
-      <div className="text-center">
-        <h1 className="text-xl font-heading font-bold text-slate-900">Welcome Back</h1>
-        <p className="text-xs text-text-muted mt-1">Log in to your BorrowLoop account</p>
+    <div className="max-w-md mx-auto p-4 space-y-6 pt-10">
+      <div>
+        <h1 className="text-3xl font-heading font-black tracking-tight text-black">Welcome back</h1>
+        <p className="text-sm text-neutral-500 mt-1">
+          Log in with your credentials to access your BorrowLoop account.
+        </p>
       </div>
 
       {error && (
-        <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-brand text-xs flex items-start gap-2">
-          <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
-          <span>{error}</span>
+        <div className="p-4 bg-red-50 border border-red-200 text-red-700 rounded-2xl text-xs flex items-start gap-2.5">
+          <AlertCircle className="w-4 h-4 mt-0.5 shrink-0 text-red-600" />
+          <span className="font-medium">{error}</span>
         </div>
       )}
 
       <form
         onSubmit={handleSubmit}
-        className="space-y-4 bg-surface p-5 rounded-brand border border-slate-200 shadow-sm"
+        className="space-y-5 bg-white p-6 sm:p-8 rounded-3xl border border-neutral-200 shadow-sm"
       >
         <div>
-          <label className="block text-xs font-semibold text-slate-700 mb-1">Email</label>
+          <label className="block text-xs font-bold text-neutral-800 uppercase tracking-wider mb-1.5">
+            Email address
+          </label>
           <div className="relative">
-            <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+            <Mail className="w-4 h-4 text-neutral-400 absolute left-3.5 top-3.5" />
             <input
               type="email"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@example.com"
-              className="w-full text-xs pl-9 pr-3 py-2 border border-slate-300 rounded-brand outline-none focus:border-primary"
+              placeholder="name@example.com"
+              className="w-full text-sm pl-10 pr-3.5 py-3 bg-neutral-100 hover:bg-neutral-100/80 focus:bg-white border border-transparent focus:border-black rounded-xl outline-none transition"
             />
           </div>
         </div>
 
         <div>
-          <div className="flex items-center justify-between mb-1">
-            <label className="text-xs font-semibold text-slate-700">Password</label>
+          <div className="flex items-center justify-between mb-1.5">
+            <label className="text-xs font-bold text-neutral-800 uppercase tracking-wider">
+              Password
+            </label>
             <button
               type="button"
               onClick={() => onNavigate('forgot-password')}
-              className="text-[11px] text-primary hover:underline"
+              className="text-xs text-neutral-600 hover:text-black hover:underline font-medium"
             >
               Forgot password?
             </button>
           </div>
           <div className="relative">
-            <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+            <Lock className="w-4 h-4 text-neutral-400 absolute left-3.5 top-3.5" />
             <input
               type="password"
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              className="w-full text-xs pl-9 pr-3 py-2 border border-slate-300 rounded-brand outline-none focus:border-primary"
+              placeholder="Enter your password"
+              className="w-full text-sm pl-10 pr-3.5 py-3 bg-neutral-100 hover:bg-neutral-100/80 focus:bg-white border border-transparent focus:border-black rounded-xl outline-none transition"
             />
           </div>
         </div>
@@ -89,20 +95,23 @@ export function LoginScreen({ onNavigate }) {
         <button
           type="submit"
           disabled={loading}
-          className="w-full py-2.5 bg-primary hover:bg-primary-dark text-white rounded-brand text-xs font-semibold transition mt-2 disabled:opacity-50"
+          className="w-full py-3.5 bg-black hover:bg-neutral-800 active:bg-neutral-900 text-white rounded-full text-sm font-bold transition shadow-xs disabled:opacity-50"
         >
-          {loading ? 'Authenticating...' : 'Log In'}
+          {loading ? 'Authenticating...' : 'Log in'}
         </button>
       </form>
 
-      <div className="text-center">
-        <button
-          type="button"
-          onClick={() => onNavigate('signup')}
-          className="text-xs text-primary hover:underline font-medium"
-        >
-          Don&apos;t have an account? Sign Up
-        </button>
+      <div className="text-center pt-2">
+        <p className="text-sm text-neutral-600">
+          Don&apos;t have an account?{' '}
+          <button
+            type="button"
+            onClick={() => onNavigate('signup')}
+            className="text-black hover:underline font-bold"
+          >
+            Sign up
+          </button>
+        </p>
       </div>
     </div>
   );

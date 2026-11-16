@@ -174,30 +174,30 @@ export default function QRScannerModal({ isOpen, onClose, bookingId, type = 'pic
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-      <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl relative border border-zinc-100">
+      <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl relative border border-neutral-200">
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 p-1.5 text-zinc-400 hover:text-zinc-600 rounded-full hover:bg-zinc-100 transition"
+          className="absolute top-4 right-4 p-2 text-neutral-400 hover:text-neutral-900 rounded-full hover:bg-neutral-100 transition"
         >
           <X className="w-5 h-5" />
         </button>
 
-        <h3 className="text-lg font-bold text-zinc-900 mb-1">{title}</h3>
-        <p className="text-xs text-zinc-500 mb-4">
+        <h3 className="text-xl font-black tracking-tight text-neutral-900 mb-1">{title}</h3>
+        <p className="text-xs text-neutral-500 mb-4">
           Point your camera at the other party&apos;s screen or enter the 6-digit code.
         </p>
 
         {/* Tab Selector */}
-        <div className="flex border-b border-zinc-200 mb-4">
+        <div className="flex border-b border-neutral-200 mb-4">
           <button
             onClick={() => {
               setActiveTab('camera');
               setError(null);
             }}
-            className={`flex-1 pb-2.5 text-xs font-semibold flex items-center justify-center gap-1.5 border-b-2 transition ${
+            className={`flex-1 pb-2.5 text-xs font-bold flex items-center justify-center gap-1.5 border-b-2 transition ${
               activeTab === 'camera'
-                ? 'border-brand text-brand'
-                : 'border-transparent text-zinc-400 hover:text-zinc-600'
+                ? 'border-black text-black'
+                : 'border-transparent text-neutral-400 hover:text-neutral-600'
             }`}
           >
             <Camera className="w-4 h-4" />
@@ -208,10 +208,10 @@ export default function QRScannerModal({ isOpen, onClose, bookingId, type = 'pic
               setActiveTab('code');
               setError(null);
             }}
-            className={`flex-1 pb-2.5 text-xs font-semibold flex items-center justify-center gap-1.5 border-b-2 transition ${
+            className={`flex-1 pb-2.5 text-xs font-bold flex items-center justify-center gap-1.5 border-b-2 transition ${
               activeTab === 'code'
-                ? 'border-brand text-brand'
-                : 'border-transparent text-zinc-400 hover:text-zinc-600'
+                ? 'border-black text-black'
+                : 'border-transparent text-neutral-400 hover:text-neutral-600'
             }`}
           >
             <KeyRound className="w-4 h-4" />
@@ -220,23 +220,25 @@ export default function QRScannerModal({ isOpen, onClose, bookingId, type = 'pic
         </div>
 
         {error && (
-          <div className="p-3 bg-rose-50 text-rose-700 rounded-xl text-xs flex items-center gap-2 mb-3">
+          <div className="p-3 bg-rose-50 text-rose-700 rounded-2xl text-xs flex items-center gap-2 mb-3 border border-rose-200">
             <AlertCircle className="w-4 h-4 shrink-0" />
             <span>{error}</span>
           </div>
         )}
 
         {success ? (
-          <div className="py-8 text-center text-emerald-600 animate-fade-in">
-            <CheckCircle2 className="w-12 h-12 mx-auto mb-2 text-emerald-500" />
+          <div className="py-8 text-center text-neutral-900 animate-fade-in">
+            <CheckCircle2 className="w-12 h-12 mx-auto mb-2 text-emerald-600" />
             <div className="font-bold text-base">Verified Successfully!</div>
             {distanceInfo && (
-              <div className="text-xs text-zinc-400 mt-1">Proximity verified ({distanceInfo})</div>
+              <div className="text-xs text-neutral-500 mt-1">
+                Proximity verified ({distanceInfo})
+              </div>
             )}
           </div>
         ) : activeTab === 'camera' ? (
           <div className="space-y-3">
-            <div className="relative aspect-square bg-zinc-900 rounded-2xl overflow-hidden flex items-center justify-center">
+            <div className="relative aspect-square bg-neutral-950 rounded-2xl overflow-hidden flex items-center justify-center">
               <video
                 ref={videoRef}
                 autoPlay
@@ -244,7 +246,7 @@ export default function QRScannerModal({ isOpen, onClose, bookingId, type = 'pic
                 muted
                 className="w-full h-full object-cover"
               />
-              <div className="absolute inset-8 border-2 border-brand/80 rounded-xl pointer-events-none animate-pulse" />
+              <div className="absolute inset-8 border-2 border-white/80 rounded-xl pointer-events-none animate-pulse" />
               {loading && (
                 <div className="absolute inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center">
                   <Loader2 className="w-8 h-8 text-white animate-spin" />
@@ -253,7 +255,7 @@ export default function QRScannerModal({ isOpen, onClose, bookingId, type = 'pic
             </div>
             <button
               onClick={() => setActiveTab('code')}
-              className="w-full py-2 text-xs font-medium text-zinc-500 hover:text-zinc-800 transition"
+              className="w-full py-2 text-xs font-semibold text-neutral-500 hover:text-neutral-900 transition"
             >
               Camera not scanning? Use 6-digit code instead
             </button>
@@ -261,7 +263,7 @@ export default function QRScannerModal({ isOpen, onClose, bookingId, type = 'pic
         ) : (
           <form onSubmit={handleCodeSubmit} className="space-y-4">
             <div>
-              <label className="block text-xs font-medium text-zinc-700 mb-1.5">
+              <label className="block text-xs font-bold text-neutral-700 mb-1.5">
                 Enter 6-Digit Code
               </label>
               <input
@@ -270,14 +272,14 @@ export default function QRScannerModal({ isOpen, onClose, bookingId, type = 'pic
                 value={code}
                 onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
                 placeholder="000000"
-                className="w-full px-4 py-3 text-center text-2xl font-mono tracking-widest border border-zinc-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand font-black"
+                className="w-full px-4 py-3 text-center text-2xl font-mono tracking-widest border border-neutral-200 rounded-2xl bg-neutral-50 focus:bg-white focus:outline-none focus:border-black font-black"
                 autoFocus
               />
             </div>
             <button
               type="submit"
               disabled={loading || code.length !== 6}
-              className="w-full py-2.5 px-4 bg-brand text-white rounded-xl font-medium text-sm hover:bg-brand-dark transition disabled:opacity-50 flex items-center justify-center gap-2"
+              className="w-full py-3.5 px-4 bg-black hover:bg-neutral-800 text-white rounded-full font-bold text-sm transition disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
             >
               {loading && <Loader2 className="w-4 h-4 animate-spin" />}
               <span>Verify & Complete</span>

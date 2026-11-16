@@ -9,7 +9,22 @@ import {
   RefreshCw,
   Clock,
   ShieldAlert,
+  BarChart2,
+  PieChart as PieIcon,
 } from 'lucide-react';
+import {
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  Cell,
+  PieChart,
+  Pie,
+  Legend,
+  CartesianGrid,
+} from 'recharts';
 import { formatPaise } from '../../utils.js';
 
 export function AdminOverview({ token }) {
@@ -70,6 +85,37 @@ export function AdminOverview({ token }) {
       </div>
     );
   }
+
+  const financialChartData = [
+    {
+      name: 'Volume',
+      amount: Math.round((data?.volumePaise || 0) / 100),
+      color: '#0d9488',
+    },
+    {
+      name: 'Escrow Held',
+      amount: Math.round((data?.depositsHeldPaise || 0) / 100),
+      color: '#6366f1',
+    },
+    {
+      name: 'Commission',
+      amount: Math.round((data?.commissionEarnedPaise || 0) / 100),
+      color: '#10b981',
+    },
+  ];
+
+  const bookingStatusData = [
+    { name: 'Completed', value: data?.bookings?.byStatus?.completed || 0, color: '#10b981' },
+    { name: 'Rented Now', value: data?.rentedNow || 0, color: '#0d9488' },
+    { name: 'Requested', value: data?.bookings?.byStatus?.requested || 0, color: '#64748b' },
+    { name: 'Disputed', value: data?.openDisputesCount || 0, color: '#f59e0b' },
+  ].filter((item) => item.value > 0);
+
+  // Fallback if no bookings exist yet in demo
+  const displayStatusData =
+    bookingStatusData.length > 0
+      ? bookingStatusData
+      : [{ name: 'No Bookings Yet', value: 1, color: '#cbd5e1' }];
 
   return (
     <div className="space-y-6">
@@ -141,6 +187,104 @@ export function AdminOverview({ token }) {
           </div>
           <div className="text-xs text-slate-500">
             {data?.openDisputesCount || 0} open • {data?.pendingAppealsCount || 0} pending appeals
+          </div>
+        </div>
+      </div>
+
+      {/* Visual Analytics Charts (Part C Advanced Feature) */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Financial Flow Bar Chart */}
+        <div className="bg-white p-5 rounded-lg border border-slate-200 shadow-sm space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <BarChart2 className="w-4 h-4 text-teal-600" />
+              <h3 className="font-semibold text-sm text-slate-900">
+                Financial Liquidity & Revenue
+              </h3>
+            </div>
+            <span className="text-xs text-slate-400 font-medium">Amount in ₹</span>
+          </div>
+          <div className="h-64 w-full">
+            <ResponsiveContainer width="100%" height="100%" minWidth={100} minHeight={100}>
+              <BarChart
+                data={financialChartData}
+                margin={{ top: 20, right: 20, left: -10, bottom: 5 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                <XAxis
+                  dataKey="name"
+                  tick={{ fontSize: 12, fill: '#64748b' }}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <YAxis tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} />
+                <Tooltip
+                  formatter={(val) => [`₹${Number(val).toLocaleString('en-IN')}`, 'Amount']}
+                  contentStyle={{
+                    backgroundColor: '#ffffff',
+                    borderRadius: '8px',
+                    border: '1px solid #e2e8f0',
+                    fontSize: '12px',
+                  }}
+                />
+                <Bar dataKey="amount" radius={[4, 4, 0, 0]}>
+                  {financialChartData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+          <div className="text-[11px] text-slate-400 text-center">
+            Computed in real-time from double-entry ledger transactions
+          </div>
+        </div>
+
+        {/* Booking Status Distribution Donut Chart */}
+        <div className="bg-white p-5 rounded-lg border border-slate-200 shadow-sm space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <PieIcon className="w-4 h-4 text-indigo-600" />
+              <h3 className="font-semibold text-sm text-slate-900">Booking Status Breakdown</h3>
+            </div>
+            <span className="text-xs text-slate-400 font-medium">Lifecycle States</span>
+          </div>
+          <div className="h-64 w-full">
+            <ResponsiveContainer width="100%" height="100%" minWidth={100} minHeight={100}>
+              <PieChart>
+                <Pie
+                  data={displayStatusData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={55}
+                  outerRadius={80}
+                  paddingAngle={4}
+                  dataKey="value"
+                >
+                  {displayStatusData.map((entry, index) => (
+                    <Cell key={`status-cell-${index}`} fill={entry.color} />
+                  ))}
+                </Pie>
+                <Tooltip
+                  formatter={(val, name) => [val, name]}
+                  contentStyle={{
+                    backgroundColor: '#ffffff',
+                    borderRadius: '8px',
+                    border: '1px solid #e2e8f0',
+                    fontSize: '12px',
+                  }}
+                />
+                <Legend
+                  verticalAlign="bottom"
+                  height={36}
+                  iconType="circle"
+                  formatter={(value) => <span className="text-xs text-slate-600">{value}</span>}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+          <div className="text-[11px] text-slate-400 text-center">
+            MongoDB $facet aggregation across all booking state machine records
           </div>
         </div>
       </div>

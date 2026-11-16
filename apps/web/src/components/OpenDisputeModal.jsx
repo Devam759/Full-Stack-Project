@@ -122,24 +122,24 @@ export function OpenDisputeModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
-      <div className="bg-surface w-full max-w-lg rounded-2xl border border-slate-200 shadow-xl overflow-hidden p-6 space-y-4">
-        <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-          <div className="flex items-center gap-2 text-rose-600 font-semibold text-sm">
-            <AlertTriangle className="w-4 h-4" />
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+      <div className="bg-white w-full max-w-lg rounded-3xl border border-neutral-200 shadow-2xl overflow-hidden p-6 space-y-5">
+        <div className="flex items-center justify-between pb-3 border-b border-neutral-100">
+          <div className="flex items-center gap-2 text-neutral-900 font-black text-base">
+            <AlertTriangle className="w-5 h-5 text-neutral-900" />
             <span>Open Rental Dispute</span>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition"
+            className="p-2 rounded-full text-neutral-400 hover:text-neutral-900 hover:bg-neutral-100 transition"
           >
-            <X className="w-4 h-4" />
+            <X className="w-5 h-5" />
           </button>
         </div>
 
         {error && (
-          <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl text-xs flex items-center gap-2">
+          <div className="p-3.5 bg-rose-50 border border-rose-200 text-rose-700 rounded-2xl text-xs flex items-center gap-2">
             <AlertTriangle className="w-4 h-4 shrink-0" />
             <span>{error}</span>
           </div>
@@ -147,20 +147,20 @@ export function OpenDisputeModal({
 
         {success ? (
           <div className="p-6 text-center space-y-2">
-            <CheckCircle2 className="w-8 h-8 mx-auto text-emerald-500" />
-            <p className="font-semibold text-sm text-slate-800">Dispute Filed Successfully</p>
-            <p className="text-xs text-text-muted">
+            <CheckCircle2 className="w-10 h-10 mx-auto text-neutral-900" />
+            <p className="font-bold text-base text-neutral-900">Dispute Filed Successfully</p>
+            <p className="text-xs text-neutral-500">
               Funds for this booking are frozen in escrow. Customer care has been notified.
             </p>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4 text-xs">
             <div>
-              <label className="block font-semibold text-slate-700 mb-1">Dispute Reason:</label>
+              <label className="block font-bold text-neutral-700 mb-1.5">Dispute Reason:</label>
               <select
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
-                className="w-full border border-slate-300 rounded-xl px-3 py-2 bg-white text-xs outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                className="w-full border border-neutral-200 rounded-2xl px-3.5 py-3 bg-neutral-50 text-xs font-semibold text-neutral-900 outline-none focus:bg-white focus:border-black"
               >
                 <option value="condition_mismatch">
                   Condition Mismatch (Item differs significantly from listing)
@@ -170,7 +170,7 @@ export function OpenDisputeModal({
             </div>
 
             <div>
-              <label className="block font-semibold text-slate-700 mb-1">
+              <label className="block font-bold text-neutral-700 mb-1.5">
                 Detailed Explanation (min 10 characters):
               </label>
               <textarea
@@ -179,27 +179,27 @@ export function OpenDisputeModal({
                 value={details}
                 onChange={(e) => setDetails(e.target.value)}
                 placeholder="Explain the specific issue encountered..."
-                className="w-full border border-slate-300 rounded-xl p-3 text-xs outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                className="w-full border border-neutral-200 rounded-2xl p-3.5 text-xs bg-neutral-50 text-neutral-900 outline-none focus:bg-white focus:border-black resize-none"
               />
             </div>
 
             {/* Photos upload */}
             <div>
-              <label className="block font-semibold text-slate-700 mb-1">
+              <label className="block font-bold text-neutral-700 mb-1.5">
                 Evidence Photos (Optional, up to 6 photos):
               </label>
-              <div className="flex items-center gap-2 overflow-x-auto py-1">
+              <div className="flex items-center gap-2.5 overflow-x-auto py-1">
                 {photos.map((p, idx) => (
                   <div key={idx} className="relative shrink-0">
                     <img
                       src={p.url}
                       alt="Dispute evidence"
-                      className="w-16 h-16 object-cover rounded-lg border border-slate-300"
+                      className="w-16 h-16 object-cover rounded-xl border border-neutral-200"
                     />
                     <button
                       type="button"
                       onClick={() => setPhotos((prev) => prev.filter((_, i) => i !== idx))}
-                      className="absolute -top-1 -right-1 bg-rose-600 text-white rounded-full w-4 h-4 text-[10px] flex items-center justify-center font-bold"
+                      className="absolute -top-1 -right-1 bg-black text-white rounded-full w-5 h-5 text-xs flex items-center justify-center font-bold"
                     >
                       ×
                     </button>
@@ -207,9 +207,9 @@ export function OpenDisputeModal({
                 ))}
 
                 {photos.length < 6 && (
-                  <label className="w-16 h-16 rounded-lg border-2 border-dashed border-slate-300 hover:border-primary flex flex-col items-center justify-center text-slate-400 hover:text-primary cursor-pointer transition shrink-0">
+                  <label className="w-16 h-16 rounded-xl border-2 border-dashed border-neutral-300 hover:border-black flex flex-col items-center justify-center text-neutral-400 hover:text-black cursor-pointer transition shrink-0 bg-neutral-50">
                     <Camera className="w-4 h-4 mb-0.5" />
-                    <span className="text-[10px]">Add</span>
+                    <span className="text-[10px] font-bold">Add</span>
                     <input
                       type="file"
                       accept="image/*"
@@ -222,25 +222,25 @@ export function OpenDisputeModal({
                 )}
               </div>
               {uploading && (
-                <p className="text-[10px] text-primary flex items-center gap-1 mt-1">
+                <p className="text-[10px] text-neutral-600 flex items-center gap-1 mt-1 font-semibold">
                   <Loader2 className="w-3 h-3 animate-spin" /> Uploading photos to secure dispute
                   folder...
                 </p>
               )}
             </div>
 
-            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+            <div className="flex items-center justify-end gap-2.5 pt-4 border-t border-neutral-100">
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 transition"
+                className="px-5 py-2.5 rounded-full text-xs font-bold text-neutral-600 hover:bg-neutral-100 transition"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={submitting || uploading || details.trim().length < 10}
-                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-semibold transition disabled:opacity-50 flex items-center gap-1.5 shadow-xs"
+                className="px-6 py-2.5 bg-black hover:bg-neutral-800 text-white rounded-full text-xs font-bold transition disabled:opacity-50 flex items-center gap-1.5 cursor-pointer shadow-xs"
               >
                 {submitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                 <span>File Formal Dispute</span>

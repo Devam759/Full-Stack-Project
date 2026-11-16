@@ -59,24 +59,31 @@ export function MyBookingsScreen({ onSelectBooking, onNavigate }) {
   }, [activeTab, apiFetch]);
 
   return (
-    <div className="p-4 pb-24 max-w-lg mx-auto">
+    <div className="space-y-6 pb-20">
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <h1 className="font-heading font-bold text-xl text-slate-900">My Bookings</h1>
-        <span className="text-xs font-semibold px-2 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-300">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="font-heading font-black text-3xl sm:text-4xl tracking-tight text-black">
+            Bookings
+          </h1>
+          <p className="text-sm text-neutral-500 mt-1">
+            Track active reservations, upcoming handovers, and return deadlines.
+          </p>
+        </div>
+        <span className="text-xs font-bold px-3 py-1 rounded-full bg-amber-400 text-black shadow-xs">
           Demo money
         </span>
       </div>
 
-      {/* Tabs */}
-      <div className="flex bg-slate-100 p-1 rounded-xl mb-4">
+      {/* Tabs (Uber style segmented control) */}
+      <div className="flex gap-2 p-1.5 bg-neutral-100 rounded-2xl w-fit">
         <button
           type="button"
           onClick={() => setActiveTab('borrower')}
-          className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-colors ${
+          className={`px-5 py-2 text-xs font-bold rounded-xl transition-all ${
             activeTab === 'borrower'
-              ? 'bg-surface text-slate-900 shadow-xs'
-              : 'text-text-muted hover:text-slate-900'
+              ? 'bg-black text-white shadow-xs'
+              : 'text-neutral-600 hover:text-black'
           }`}
         >
           Borrowing
@@ -84,10 +91,10 @@ export function MyBookingsScreen({ onSelectBooking, onNavigate }) {
         <button
           type="button"
           onClick={() => setActiveTab('lender')}
-          className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-colors ${
+          className={`px-5 py-2 text-xs font-bold rounded-xl transition-all ${
             activeTab === 'lender'
-              ? 'bg-surface text-slate-900 shadow-xs'
-              : 'text-text-muted hover:text-slate-900'
+              ? 'bg-black text-white shadow-xs'
+              : 'text-neutral-600 hover:text-black'
           }`}
         >
           Lending
@@ -96,102 +103,110 @@ export function MyBookingsScreen({ onSelectBooking, onNavigate }) {
 
       {/* Content */}
       {loading ? (
-        <div className="flex flex-col items-center justify-center p-12 text-text-muted">
-          <Loader2 className="w-8 h-8 animate-spin text-primary mb-3" />
-          <p className="text-sm font-medium">Loading bookings...</p>
+        <div className="flex flex-col items-center justify-center py-20 text-neutral-400">
+          <Loader2 className="w-8 h-8 animate-spin text-black mb-3" />
+          <p className="text-sm font-semibold text-neutral-600">Loading bookings...</p>
         </div>
       ) : error ? (
-        <div className="p-4 bg-rose-50 border border-rose-200 rounded-lg text-rose-700 text-sm">
+        <div className="p-4 bg-red-50 border border-red-200 rounded-2xl text-red-700 text-xs font-medium">
           {error}
         </div>
       ) : bookings.length === 0 ? (
-        <div className="text-center py-12 px-4 bg-surface rounded-xl border border-slate-200 shadow-xs">
-          <Package className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-          <h3 className="font-semibold text-slate-900 text-base mb-1">
+        <div className="text-center py-16 px-6 bg-white rounded-3xl border border-neutral-200 shadow-xs max-w-lg mx-auto">
+          <div className="inline-flex p-4 rounded-full bg-neutral-100 text-neutral-400 mb-3">
+            <Package className="w-8 h-8" />
+          </div>
+          <h3 className="font-bold text-black text-lg mb-1">
             {activeTab === 'borrower' ? 'No borrows yet' : 'No lending requests'}
           </h3>
-          <p className="text-xs text-text-muted max-w-xs mx-auto mb-4">
+          <p className="text-xs text-neutral-500 max-w-sm mx-auto mb-5 leading-relaxed">
             {activeTab === 'borrower'
-              ? 'Browse items in your communities to borrow tools, gear, and games.'
-              : 'List items you own to start lending them to your neighbours.'}
+              ? 'Browse catalog items in your campus or neighborhood to borrow tools, cameras, and gear.'
+              : 'List items you own to start earning demo rental returns.'}
           </p>
           {activeTab === 'borrower' ? (
             <button
               type="button"
               onClick={() => onNavigate('items')}
-              className="px-4 py-2 bg-primary text-white text-xs font-semibold rounded-lg shadow-xs hover:bg-primary-dark transition-colors"
+              className="px-6 py-3 bg-black hover:bg-neutral-800 text-white text-xs font-bold rounded-full shadow-xs transition"
             >
-              Browse Items
+              Browse items
             </button>
           ) : (
             <button
               type="button"
               onClick={() => onNavigate('create-item')}
-              className="px-4 py-2 bg-primary text-white text-xs font-semibold rounded-lg shadow-xs hover:bg-primary-dark transition-colors"
+              className="px-6 py-3 bg-black hover:bg-neutral-800 text-white text-xs font-bold rounded-full shadow-xs transition"
             >
-              List an Item
+              List an item
             </button>
           )}
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {bookings.map((booking) => {
             const badge = STATUS_BADGES[booking.status] || {
               label: booking.status,
-              bg: 'bg-slate-100',
-              text: 'text-slate-700',
+              bg: 'bg-neutral-100',
+              text: 'text-neutral-800',
             };
 
             return (
               <div
                 key={booking._id}
                 onClick={() => handleSelect(booking._id)}
-                className="bg-surface rounded-xl border border-slate-200 p-4 shadow-xs hover:border-primary/40 cursor-pointer transition-all flex flex-col gap-3"
+                className="bg-white rounded-3xl border border-neutral-200 p-5 shadow-xs hover:border-black cursor-pointer transition-all flex flex-col justify-between group"
               >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex gap-3 min-w-0">
-                    {booking.itemId?.photos?.[0] ? (
-                      <img
-                        src={booking.itemId.photos[0]}
-                        alt=""
-                        className="w-14 h-14 object-cover rounded-lg bg-slate-100 shrink-0"
-                      />
-                    ) : (
-                      <div className="w-14 h-14 rounded-lg bg-slate-100 flex items-center justify-center shrink-0">
-                        <Package className="w-6 h-6 text-slate-400" />
-                      </div>
-                    )}
-                    <div className="min-w-0">
-                      <h3 className="font-semibold text-slate-900 text-sm truncate">
-                        {booking.itemId?.title || 'Item'}
-                      </h3>
-                      <p className="text-xs text-text-muted mt-0.5">
-                        {activeTab === 'borrower'
-                          ? `Lender: ${booking.lenderId?.name || 'User'}`
-                          : `Borrower: ${booking.borrowerId?.name || 'User'}`}
-                      </p>
-                      <div className="flex items-center gap-1.5 text-xs text-slate-500 mt-1">
-                        <Clock className="w-3.5 h-3.5 text-slate-400" />
-                        <span>
-                          {booking.startDate} &rarr; {booking.endDate} ({booking.days}d)
-                        </span>
+                <div className="space-y-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex gap-3.5 min-w-0">
+                      {booking.itemId?.photos?.[0] ? (
+                        <img
+                          src={booking.itemId.photos[0]}
+                          alt=""
+                          className="w-16 h-16 object-cover rounded-2xl bg-neutral-100 shrink-0 border border-neutral-100"
+                        />
+                      ) : (
+                        <div className="w-16 h-16 rounded-2xl bg-neutral-100 flex items-center justify-center shrink-0">
+                          <Package className="w-7 h-7 text-neutral-400" />
+                        </div>
+                      )}
+                      <div className="min-w-0">
+                        <h3 className="font-bold text-black text-base truncate group-hover:text-neutral-900 transition">
+                          {booking.itemId?.title || 'Item'}
+                        </h3>
+                        <p className="text-xs text-neutral-500 mt-0.5">
+                          {activeTab === 'borrower'
+                            ? `Lender: ${booking.lenderId?.name || 'User'}`
+                            : `Borrower: ${booking.borrowerId?.name || 'User'}`}
+                        </p>
+                        <div className="flex items-center gap-1.5 text-xs text-neutral-500 mt-1.5 font-medium">
+                          <Clock className="w-3.5 h-3.5 text-neutral-400" />
+                          <span>
+                            {booking.startDate} &rarr; {booking.endDate} ({booking.days}d)
+                          </span>
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  <span
-                    className={`text-[11px] font-semibold px-2 py-0.5 rounded-full shrink-0 ${badge.bg} ${badge.text}`}
-                  >
-                    {badge.label}
-                  </span>
+                    <span
+                      className={`text-[11px] font-bold px-2.5 py-1 rounded-full shrink-0 ${badge.bg} ${badge.text}`}
+                    >
+                      {badge.label}
+                    </span>
+                  </div>
                 </div>
 
-                <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-xs text-slate-600">
-                  <span>
-                    Total: <strong>{formatPaise(booking.rentPaise + booking.depositPaise)}</strong>
+                <div className="flex items-center justify-between pt-4 mt-4 border-t border-neutral-100 text-xs">
+                  <span className="text-neutral-600">
+                    Total:{' '}
+                    <strong className="text-black font-black">
+                      {formatPaise(booking.rentPaise + booking.depositPaise)}
+                    </strong>
                   </span>
-                  <span className="flex items-center gap-1 font-semibold text-primary hover:text-primary-dark">
-                    View Details <ArrowRight className="w-3.5 h-3.5" />
+                  <span className="flex items-center gap-1 font-bold text-black group-hover:translate-x-0.5 transition-transform">
+                    <span>Manage</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
                   </span>
                 </div>
               </div>

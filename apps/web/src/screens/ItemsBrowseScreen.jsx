@@ -94,6 +94,37 @@ export function ItemsBrowseScreen({ onSelectItem, onCreateItem }) {
 
   return (
     <div className="p-4 pb-24 space-y-4">
+      {/* Schema.org ItemList JSON-LD for rich catalog search indexing */}
+      {items.length > 0 && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              '@context': 'https://schema.org',
+              '@type': 'ItemList',
+              itemListElement: items.slice(0, 10).map((item, idx) => ({
+                '@type': 'ListItem',
+                position: idx + 1,
+                item: {
+                  '@type': 'Product',
+                  name: item.title,
+                  description: item.description,
+                  image: item.photos?.[0],
+                  offers: {
+                    '@type': 'Offer',
+                    price: (item.rentPerDayPaise / 100).toFixed(2),
+                    priceCurrency: 'INR',
+                    availability: item.isAvailable
+                      ? 'https://schema.org/InStock'
+                      : 'https://schema.org/OutOfStock',
+                  },
+                },
+              })),
+            }),
+          }}
+        />
+      )}
+
       {/* Header & List Item CTA */}
       <div className="flex items-center justify-between">
         <div>
@@ -235,7 +266,7 @@ export function ItemsBrowseScreen({ onSelectItem, onCreateItem }) {
 
       {/* Items Cards Grid */}
       {!loading && !error && items.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
           {items.map((item) => {
             const cardImg =
               item.photoVariants?.[0]?.card ||
@@ -246,55 +277,55 @@ export function ItemsBrowseScreen({ onSelectItem, onCreateItem }) {
               <div
                 key={item._id}
                 onClick={() => onSelectItem(item._id)}
-                className="bg-surface border border-slate-200 rounded-xl overflow-hidden hover:shadow-md transition cursor-pointer flex flex-col group"
+                className="bg-white border border-neutral-200 rounded-2xl overflow-hidden hover:shadow-lg transition-all duration-200 cursor-pointer flex flex-col group"
               >
                 {/* Photo Preview */}
-                <div className="relative aspect-4/3 bg-slate-100 overflow-hidden">
+                <div className="relative aspect-4/3 bg-neutral-100 overflow-hidden">
                   <img
                     src={cardImg}
                     alt={item.title}
                     className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
                     loading="lazy"
                   />
-                  <div className="absolute top-2 left-2 flex gap-1">
-                    <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-black/60 text-white backdrop-blur-xs uppercase tracking-wider">
+                  <div className="absolute top-2.5 left-2.5 flex gap-1">
+                    <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-black/70 text-white backdrop-blur-md uppercase tracking-wider">
                       {item.condition.replace('_', ' ')}
                     </span>
                   </div>
                   {item.distanceBand && (
-                    <div className="absolute bottom-2 left-2 bg-surface/90 backdrop-blur-xs px-2 py-0.5 rounded text-[11px] font-medium text-slate-700 flex items-center gap-1 shadow-xs">
-                      <MapPin className="w-3 h-3 text-primary" />
+                    <div className="absolute bottom-2.5 left-2.5 bg-white/95 backdrop-blur-md px-2.5 py-1 rounded-full text-[11px] font-bold text-black flex items-center gap-1 shadow-xs">
+                      <MapPin className="w-3 h-3 text-neutral-800" />
                       <span>{item.distanceBand}</span>
                     </div>
                   )}
                 </div>
 
                 {/* Card Content */}
-                <div className="p-3 flex-1 flex flex-col justify-between">
+                <div className="p-4 flex-1 flex flex-col justify-between space-y-3">
                   <div>
-                    <h2 className="font-heading font-semibold text-slate-900 text-sm line-clamp-1">
+                    <h2 className="font-bold text-neutral-900 text-sm line-clamp-1 group-hover:text-teal-700 transition">
                       {item.title}
                     </h2>
-                    <p className="text-xs text-text-muted line-clamp-2 mt-0.5">
+                    <p className="text-xs text-neutral-500 line-clamp-2 mt-1 leading-relaxed">
                       {item.description}
                     </p>
                   </div>
 
-                  <div className="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between">
+                  <div className="pt-3 border-t border-neutral-100 flex items-center justify-between">
                     <div>
                       <div className="flex items-baseline gap-1">
-                        <span className="text-sm font-bold text-primary font-heading">
+                        <span className="text-base font-extrabold text-black">
                           {formatPaise(item.rentPerDayPaise)}
                         </span>
-                        <span className="text-[11px] text-text-muted">/ day</span>
+                        <span className="text-[11px] text-neutral-500 font-medium">/ day</span>
                       </div>
-                      <div className="text-[10px] text-slate-400">
+                      <div className="text-[11px] text-neutral-400">
                         Deposit: {formatPaise(item.depositPaise)}
                       </div>
                     </div>
 
                     {/* Demo Money Tag - Hard Rule 9 */}
-                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-50 text-amber-700 border border-amber-200">
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
                       Demo money
                     </span>
                   </div>

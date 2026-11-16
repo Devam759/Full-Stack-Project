@@ -168,44 +168,61 @@ export function WalletScreen() {
   }
 
   return (
-    <div className="p-4 pb-24 max-w-lg mx-auto space-y-5 animate-fade-in">
-      {/* Demo Money Hard Rule 9 Visible Indicator */}
-      <div className="bg-amber-50 border border-amber-300 rounded-lg p-3 flex items-start gap-3 shadow-xs">
-        <Shield className="w-5 h-5 text-amber-700 shrink-0 mt-0.5" />
-        <div className="text-xs text-amber-900 leading-relaxed">
-          <span className="font-bold uppercase tracking-wider text-amber-800 bg-amber-200 px-1.5 py-0.5 rounded mr-1">
-            Demo Money Only
+    <div className="space-y-6 pb-20">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="font-heading font-black text-3xl sm:text-4xl tracking-tight text-black">
+            Wallet
+          </h1>
+          <p className="text-sm text-neutral-500 mt-1">
+            Manage your escrow balances, top up demo credits, and track payouts.
+          </p>
+        </div>
+        <span className="text-xs font-bold px-3 py-1 rounded-full bg-amber-400 text-black shadow-xs">
+          Demo money
+        </span>
+      </div>
+
+      {/* Demo Money Notice */}
+      <div className="bg-neutral-50 border border-neutral-200 rounded-2xl p-4 flex items-start gap-3 text-xs text-neutral-700">
+        <Shield className="w-5 h-5 text-black shrink-0 mt-0.5" />
+        <div className="leading-relaxed">
+          <span className="font-bold uppercase tracking-wider text-black bg-neutral-200 px-2 py-0.5 rounded-full mr-1.5 text-[10px]">
+            Demo Money Mode
           </span>
-          All funds on BorrowLoop are simulated demo credits for testing. No real money is
-          deposited, withdrawn, or stored.
+          All funds on BorrowLoop are simulated demo credits for testing. No real money or bank
+          accounts are debited.
         </div>
       </div>
 
       {/* Notifications */}
       {error && (
-        <div className="bg-rose-50 border border-rose-200 text-rose-800 text-sm p-3 rounded-lg flex items-center gap-2">
-          <AlertCircle className="w-5 h-5 text-rose-600 shrink-0" />
+        <div className="bg-red-50 border border-red-200 text-red-700 text-xs font-medium p-4 rounded-2xl flex items-center gap-2.5">
+          <AlertCircle className="w-5 h-5 text-red-600 shrink-0" />
           <span>{error}</span>
         </div>
       )}
 
       {actionSuccess && (
-        <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm p-3 rounded-lg flex items-center gap-2">
+        <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold p-4 rounded-2xl flex items-center gap-2.5">
           <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
           <span>{actionSuccess}</span>
         </div>
       )}
 
-      {/* Wallet Balance Card */}
-      <div className="bg-surface rounded-xl border border-slate-200 p-5 shadow-xs space-y-4">
+      {/* Uber Sleek Pitch-Black Balance Card */}
+      <div className="bg-black text-white rounded-3xl p-8 shadow-lg space-y-6">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-neutral-800 flex items-center justify-center text-white">
               <WalletIcon className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-sm font-semibold text-text-muted">Available Balance</h2>
-              <div className="text-2xl font-bold font-heading text-slate-900">
+              <span className="text-xs font-bold uppercase tracking-wider text-neutral-400">
+                Available balance
+              </span>
+              <div className="text-4xl font-heading font-black text-white tracking-tight mt-0.5">
                 {formatPaise(wallet?.availablePaise || 0, { showDemoTag: false })}
               </div>
             </div>
@@ -217,28 +234,28 @@ export function WalletScreen() {
               fetchWallet();
               fetchTransactions();
             }}
-            className="p-2 text-slate-400 hover:text-slate-600 rounded-lg transition"
+            className="p-2.5 text-neutral-400 hover:text-white rounded-full hover:bg-neutral-800 transition"
             title="Refresh balance"
           >
             <RefreshCw className="w-4 h-4" />
           </button>
         </div>
 
-        <div className="grid grid-cols-2 gap-3 pt-3 border-t border-slate-100 text-xs">
+        <div className="grid grid-cols-2 gap-4 pt-4 border-t border-neutral-800 text-xs">
           <div>
-            <span className="text-text-muted block mb-0.5">Held in Bookings</span>
-            <span className="font-semibold text-slate-700">
+            <span className="text-neutral-400 block mb-0.5">Held in active escrows</span>
+            <span className="font-bold text-white text-sm">
               {formatPaise(wallet?.frozenPaise || 0, { showDemoTag: false })}
             </span>
           </div>
           <div>
-            <span className="text-text-muted block mb-0.5">Wallet Cap Limit</span>
-            <span className="font-semibold text-slate-700">₹50,000.00</span>
+            <span className="text-neutral-400 block mb-0.5">Wallet limit</span>
+            <span className="font-bold text-white text-sm">₹50,000.00</span>
           </div>
         </div>
 
         {/* Action Buttons */}
-        <div className="grid grid-cols-2 gap-3 pt-2">
+        <div className="flex flex-col sm:flex-row gap-3 pt-2">
           <button
             type="button"
             onClick={() => {
@@ -247,14 +264,14 @@ export function WalletScreen() {
               setError(null);
             }}
             disabled={!wallet?.canAddFunds}
-            className={`flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg font-medium text-sm transition ${
+            className={`flex-1 flex items-center justify-center gap-2 py-3.5 px-6 rounded-full font-bold text-xs transition ${
               activeTab === 'add'
-                ? 'bg-primary-dark text-white'
-                : 'bg-primary text-white hover:bg-primary-dark shadow-xs'
+                ? 'bg-neutral-200 text-black'
+                : 'bg-white text-black hover:bg-neutral-200 shadow-xs'
             } ${!wallet?.canAddFunds ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
             <PlusCircle className="w-4 h-4" />
-            <span>Add Money</span>
+            <span>Add demo money</span>
           </button>
 
           <button
@@ -265,10 +282,10 @@ export function WalletScreen() {
               setError(null);
             }}
             disabled={!wallet || wallet.availablePaise <= 0}
-            className={`flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg font-medium text-sm transition border ${
+            className={`flex-1 flex items-center justify-center gap-2 py-3.5 px-6 rounded-full font-bold text-xs transition border border-neutral-700 ${
               activeTab === 'withdraw'
-                ? 'bg-slate-800 text-white border-slate-800'
-                : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                ? 'bg-neutral-800 text-white'
+                : 'bg-neutral-900 text-white hover:bg-neutral-800'
             } ${!wallet || wallet.availablePaise <= 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
             <ArrowUpRight className="w-4 h-4" />
@@ -281,23 +298,23 @@ export function WalletScreen() {
       {activeTab === 'add' && (
         <form
           onSubmit={handleAddFunds}
-          className="bg-surface rounded-xl border border-primary/30 p-5 shadow-xs space-y-4 animate-fade-in"
+          className="bg-white rounded-3xl border border-neutral-200 p-6 sm:p-8 shadow-sm space-y-5 animate-fade-in"
         >
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-bold text-slate-900">Add Demo Funds</h3>
-            <span className="text-xs text-text-muted">
-              Cap remaining: ₹{(capRemainingPaise / 100).toFixed(2)}
+            <h3 className="text-base font-bold text-black">Top up demo wallet</h3>
+            <span className="text-xs text-neutral-500 font-semibold">
+              Limit remaining: ₹{(capRemainingPaise / 100).toFixed(2)}
             </span>
           </div>
 
           {/* Quick Amount Selectors */}
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-4 gap-2.5">
             {[100, 500, 1000, 5000].map((amt) => (
               <button
                 key={amt}
                 type="button"
                 onClick={() => setInputRupees(amt.toString())}
-                className="py-1.5 px-2 bg-slate-50 hover:bg-primary/10 hover:text-primary border border-slate-200 rounded text-xs font-semibold text-slate-700 transition"
+                className="py-2.5 px-2 bg-neutral-100 hover:bg-black hover:text-white rounded-xl text-xs font-bold text-black transition"
               >
                 +₹{amt}
               </button>
@@ -305,11 +322,11 @@ export function WalletScreen() {
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-text-muted mb-1">
-              Enter Amount (₹)
+            <label className="block text-xs font-bold text-neutral-800 uppercase tracking-wider mb-1.5">
+              Enter amount (₹)
             </label>
             <div className="relative">
-              <span className="absolute left-3 top-2.5 text-slate-400 font-semibold">₹</span>
+              <span className="absolute left-4 top-3.5 text-neutral-400 font-bold">₹</span>
               <input
                 type="number"
                 step="0.01"
@@ -319,25 +336,25 @@ export function WalletScreen() {
                 value={inputRupees}
                 onChange={(e) => setInputRupees(e.target.value)}
                 required
-                className="w-full pl-8 pr-4 py-2 border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm"
+                className="w-full pl-9 pr-4 py-3 bg-neutral-100 hover:bg-neutral-100/80 focus:bg-white border border-transparent focus:border-black rounded-xl text-black font-bold outline-none text-sm transition"
               />
             </div>
-            <p className="text-[11px] text-text-muted mt-1">Min: ₹100.00, Max: ₹50,000.00</p>
+            <p className="text-xs text-neutral-500 mt-1">Min: ₹100.00 • Max: ₹50,000.00</p>
           </div>
 
-          <div className="flex items-center gap-2 pt-2">
+          <div className="flex items-center gap-3 pt-2">
             <button
               type="submit"
               disabled={isSubmitting || !inputRupees}
-              className="flex-1 py-2 px-4 rounded-lg bg-primary hover:bg-primary-dark text-white text-sm font-semibold disabled:opacity-50 flex items-center justify-center gap-2 transition"
+              className="flex-1 py-3.5 px-6 rounded-full bg-black hover:bg-neutral-800 text-white text-xs font-bold disabled:opacity-50 flex items-center justify-center gap-2 transition shadow-xs"
             >
               {isSubmitting && <RefreshCw className="w-4 h-4 animate-spin" />}
-              <span>{isSubmitting ? 'Adding...' : 'Confirm Add Funds'}</span>
+              <span>{isSubmitting ? 'Adding...' : 'Confirm top up'}</span>
             </button>
             <button
               type="button"
               onClick={() => setActiveTab('overview')}
-              className="py-2 px-4 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 text-sm font-medium"
+              className="py-3.5 px-6 rounded-full bg-neutral-100 hover:bg-neutral-200 text-black text-xs font-bold transition"
             >
               Cancel
             </button>
@@ -349,28 +366,30 @@ export function WalletScreen() {
       {activeTab === 'withdraw' && (
         <form
           onSubmit={handleWithdrawFunds}
-          className="bg-surface rounded-xl border border-slate-300 p-5 shadow-xs space-y-4 animate-fade-in"
+          className="bg-white rounded-3xl border border-neutral-200 p-6 sm:p-8 shadow-sm space-y-5 animate-fade-in"
         >
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-bold text-slate-900">Withdraw Demo Funds</h3>
-            <span className="text-xs text-text-muted">
+            <h3 className="text-base font-bold text-black">Withdraw to bank account (demo)</h3>
+            <span className="text-xs text-neutral-500 font-semibold">
               Available: ₹{toRupees(wallet?.availablePaise || 0).toFixed(2)}
             </span>
           </div>
 
           <div>
-            <div className="flex items-center justify-between mb-1">
-              <label className="text-xs font-medium text-text-muted">Amount to Withdraw (₹)</label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-xs font-bold text-neutral-800 uppercase tracking-wider">
+                Amount to withdraw (₹)
+              </label>
               <button
                 type="button"
                 onClick={() => setInputRupees(toRupees(wallet?.availablePaise || 0).toString())}
-                className="text-xs font-semibold text-primary hover:underline"
+                className="text-xs font-bold text-black hover:underline"
               >
                 Max Available
               </button>
             </div>
             <div className="relative">
-              <span className="absolute left-3 top-2.5 text-slate-400 font-semibold">₹</span>
+              <span className="absolute left-4 top-3.5 text-neutral-400 font-bold">₹</span>
               <input
                 type="number"
                 step="0.01"
@@ -380,24 +399,24 @@ export function WalletScreen() {
                 value={inputRupees}
                 onChange={(e) => setInputRupees(e.target.value)}
                 required
-                className="w-full pl-8 pr-4 py-2 border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm"
+                className="w-full pl-9 pr-4 py-3 bg-neutral-100 hover:bg-neutral-100/80 focus:bg-white border border-transparent focus:border-black rounded-xl text-black font-bold outline-none text-sm transition"
               />
             </div>
           </div>
 
-          <div className="flex items-center gap-2 pt-2">
+          <div className="flex items-center gap-3 pt-2">
             <button
               type="submit"
               disabled={isSubmitting || !inputRupees}
-              className="flex-1 py-2 px-4 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-sm font-semibold disabled:opacity-50 flex items-center justify-center gap-2 transition"
+              className="flex-1 py-3.5 px-6 rounded-full bg-black hover:bg-neutral-800 text-white text-xs font-bold disabled:opacity-50 flex items-center justify-center gap-2 transition shadow-xs"
             >
               {isSubmitting && <RefreshCw className="w-4 h-4 animate-spin" />}
-              <span>{isSubmitting ? 'Withdrawing...' : 'Confirm Withdrawal'}</span>
+              <span>{isSubmitting ? 'Withdrawing...' : 'Confirm withdrawal'}</span>
             </button>
             <button
               type="button"
               onClick={() => setActiveTab('overview')}
-              className="py-2 px-4 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 text-sm font-medium"
+              className="py-3.5 px-6 rounded-full bg-neutral-100 hover:bg-neutral-200 text-black text-xs font-bold transition"
             >
               Cancel
             </button>
@@ -406,46 +425,51 @@ export function WalletScreen() {
       )}
 
       {/* Transaction History Section */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h3 className="font-heading font-semibold text-sm text-slate-900">Transaction History</h3>
-          <span className="text-xs text-text-muted">{transactions.length} record(s)</span>
+      <div className="bg-white rounded-3xl border border-neutral-200 p-6 sm:p-8 shadow-xs space-y-4">
+        <div className="flex items-center justify-between border-b border-neutral-100 pb-3">
+          <h3 className="text-base font-bold text-black flex items-center gap-2">
+            <Clock className="w-4 h-4 text-neutral-400" />
+            <span>Activity Ledger</span>
+          </h3>
+          <span className="text-xs text-neutral-400 font-semibold">
+            {transactions.length} record(s)
+          </span>
         </div>
 
         {transactions.length === 0 ? (
-          <div className="bg-surface rounded-xl border border-slate-200 p-8 text-center text-text-muted text-sm space-y-2">
-            <Clock className="w-8 h-8 text-slate-300 mx-auto" />
-            <p className="font-medium text-slate-600">No transactions yet</p>
-            <p className="text-xs">Add demo money above to simulate borrowing and listing.</p>
+          <div className="py-12 text-center text-xs text-neutral-400 space-y-2">
+            <Clock className="w-8 h-8 text-neutral-300 mx-auto" />
+            <p className="font-bold text-black">No transactions yet</p>
+            <p className="text-xs text-neutral-500">
+              Top up demo money above to start borrowing and lending.
+            </p>
           </div>
         ) : (
-          <div className="bg-surface rounded-xl border border-slate-200 divide-y divide-slate-100 overflow-hidden shadow-xs">
+          <div className="divide-y divide-neutral-100">
             {transactions.map((tx) => {
               const isPositive = tx.amountPaise > 0;
               return (
                 <div
-                  key={tx.id}
-                  className="p-3.5 flex items-center justify-between hover:bg-slate-50 transition"
+                  key={tx.id || tx._id}
+                  className="py-3.5 flex items-center justify-between text-xs"
                 >
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3.5">
                     <div
-                      className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
-                        isPositive
-                          ? 'bg-emerald-100 text-emerald-700'
-                          : 'bg-slate-100 text-slate-700'
+                      className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${
+                        isPositive ? 'bg-neutral-100 text-black' : 'bg-neutral-100 text-neutral-600'
                       }`}
                     >
                       {isPositive ? (
-                        <ArrowDownLeft className="w-4 h-4" />
+                        <ArrowDownLeft className="w-4 h-4 text-black" />
                       ) : (
-                        <ArrowUpRight className="w-4 h-4" />
+                        <ArrowUpRight className="w-4 h-4 text-neutral-600" />
                       )}
                     </div>
                     <div>
-                      <p className="text-xs font-semibold text-slate-800 capitalize">
+                      <p className="text-xs font-bold text-black capitalize">
                         {tx.type.replace(/_/g, ' ')}
                       </p>
-                      <p className="text-[11px] text-text-muted">
+                      <p className="text-[11px] text-neutral-500">
                         {new Date(tx.createdAt).toLocaleString('en-IN', {
                           day: 'numeric',
                           month: 'short',
@@ -459,14 +483,14 @@ export function WalletScreen() {
 
                   <div className="text-right">
                     <p
-                      className={`text-xs font-bold ${
-                        isPositive ? 'text-emerald-600' : 'text-slate-800'
+                      className={`text-xs font-black ${
+                        isPositive ? 'text-black' : 'text-neutral-700'
                       }`}
                     >
                       {isPositive ? '+' : ''}₹{toRupees(tx.amountPaise).toFixed(2)}
                     </p>
-                    {tx.balanceAfterPaise !== null && (
-                      <p className="text-[10px] text-slate-400">
+                    {tx.balanceAfterPaise !== null && tx.balanceAfterPaise !== undefined && (
+                      <p className="text-[10px] text-neutral-400">
                         Bal: ₹{toRupees(tx.balanceAfterPaise).toFixed(2)}
                       </p>
                     )}
@@ -481,9 +505,9 @@ export function WalletScreen() {
           <button
             type="button"
             onClick={() => fetchTransactions(nextCursor)}
-            className="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold transition"
+            className="w-full py-3 bg-neutral-100 hover:bg-neutral-200 text-black rounded-full text-xs font-bold transition mt-2"
           >
-            Load Older Transactions
+            Load older activity
           </button>
         )}
       </div>

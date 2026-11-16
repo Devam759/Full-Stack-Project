@@ -3,20 +3,20 @@
 @tailwind utilities;
 
 :root {
-  --color-primary: #0d9488;
-  --color-primary-dark: #0f766e;
-  --color-primary-light: #ccfbf1;
-  --color-background: #f8fafc;
+  --color-primary: #000000;
+  --color-primary-dark: #1f1f1f;
+  --color-primary-light: #f3f4f6;
+  --color-background: #ffffff;
   --color-surface: #ffffff;
-  --color-text: #0f172a;
-  --color-text-muted: #64748b;
-  --color-success: #16a34a;
-  --color-warning: #d97706;
-  --color-danger: #dc2626;
+  --color-text: #000000;
+  --color-text-muted: #5e5e5e;
+  --color-success: #05944f;
+  --color-warning: #b45309;
+  --color-danger: #e11900;
 
   --font-heading: 'Inter', system-ui, -apple-system, sans-serif;
   --font-body: 'Inter', system-ui, -apple-system, sans-serif;
-  --radius-brand: 0.5rem;
+  --radius-brand: 0.75rem;
 }
 
 body {

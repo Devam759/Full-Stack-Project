@@ -11,23 +11,23 @@ export const BRAND = Object.freeze({
     svg: `<svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="16" cy="16" r="14" stroke="currentColor" stroke-width="3"/><path d="M11 16a5 5 0 0 1 10 0 5 5 0 0 1-10 0Z" stroke="currentColor" stroke-width="2.5"/></svg>`,
   },
   colors: {
-    primary: '#0d9488', // calm teal accent
-    primaryDark: '#0f766e',
-    primaryLight: '#ccfbf1',
-    background: '#f8fafc',
+    primary: '#000000', // Uber pitch-black primary CTA
+    primaryDark: '#1f1f1f',
+    primaryLight: '#f3f4f6',
+    background: '#ffffff',
     surface: '#ffffff',
-    text: '#0f172a',
-    textMuted: '#64748b',
-    success: '#16a34a',
-    warning: '#d97706',
-    danger: '#dc2626',
+    text: '#000000',
+    textMuted: '#5e5e5e',
+    success: '#05944f', // Uber green accent
+    warning: '#b45309',
+    danger: '#e11900',
   },
   fonts: {
     heading: 'Inter, system-ui, -apple-system, sans-serif',
     body: 'Inter, system-ui, -apple-system, sans-serif',
   },
   radii: {
-    brand: '0.5rem', // subtle rounded edges (8px)
+    brand: '0.75rem', // 12px clean rounded corners
   },
 });
 

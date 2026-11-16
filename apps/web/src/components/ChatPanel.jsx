@@ -394,16 +394,16 @@ export function ChatPanel({ bookingId, currentUserId, bookingStatus }) {
                     </button>
                   )}
                   <div
-                    className={`max-w-xs sm:max-w-md rounded-2xl px-4 py-2 text-xs leading-relaxed shadow-xs ${
+                    className={`max-w-xs sm:max-w-md rounded-2xl px-4 py-2.5 text-xs leading-relaxed shadow-xs ${
                       isMe
-                        ? 'bg-brand-600 text-white rounded-br-xs'
-                        : 'bg-white border border-slate-200 text-slate-800 rounded-bl-xs'
+                        ? 'bg-black text-white rounded-br-xs'
+                        : 'bg-white border border-neutral-200 text-neutral-900 rounded-bl-xs'
                     }`}
                   >
                     <p className="whitespace-pre-wrap break-words">{m.text}</p>
                     <div
                       className={`flex items-center justify-end gap-1 mt-1 text-[9px] ${
-                        isMe ? 'text-brand-100' : 'text-slate-400'
+                        isMe ? 'text-neutral-400' : 'text-neutral-400'
                       }`}
                     >
                       <span>
@@ -416,7 +416,7 @@ export function ChatPanel({ bookingId, currentUserId, bookingStatus }) {
                         (isRead ? (
                           <CheckCheck className="w-3 h-3 text-white" />
                         ) : (
-                          <Check className="w-3 h-3 text-brand-200" />
+                          <Check className="w-3 h-3 text-neutral-400" />
                         ))}
                     </div>
                   </div>
@@ -429,7 +429,7 @@ export function ChatPanel({ bookingId, currentUserId, bookingStatus }) {
       </div>
 
       {error && (
-        <div className="px-4 py-1.5 bg-red-50 text-red-600 text-xs border-t border-red-100">
+        <div className="px-4 py-2 bg-red-50 text-red-600 text-xs border-t border-red-100">
           {error}
         </div>
       )}
@@ -438,7 +438,7 @@ export function ChatPanel({ bookingId, currentUserId, bookingStatus }) {
       {isTerminal ? (
         <div
           data-testid="terminal-chat-banner"
-          className="p-3 bg-slate-100 border-t border-slate-200 text-center text-xs text-slate-600 font-medium"
+          className="p-3 bg-neutral-100 border-t border-neutral-200 text-center text-xs text-neutral-600 font-medium"
         >
           This booking is {bookingStatus}. Chat history is read-only.
         </div>
@@ -446,13 +446,13 @@ export function ChatPanel({ bookingId, currentUserId, bookingStatus }) {
         /* Message Input & Action Bar */
         <form
           onSubmit={handleSendText}
-          className="p-3 bg-white border-t border-slate-200 flex items-center gap-2"
+          className="p-3 bg-white border-t border-neutral-200 flex items-center gap-2"
         >
           <button
             type="button"
             data-testid="propose-pin-btn"
             onClick={() => setShowPinPicker(true)}
-            className="p-2 text-slate-500 hover:text-brand-600 hover:bg-brand-50 rounded-lg transition-colors flex-shrink-0"
+            className="p-2 text-neutral-500 hover:text-black hover:bg-neutral-100 rounded-full transition-colors flex-shrink-0"
             title="Propose Handover Meeting Pin"
           >
             <MapPin className="w-5 h-5" />
@@ -466,10 +466,10 @@ export function ChatPanel({ bookingId, currentUserId, bookingStatus }) {
               onChange={(e) => setText(e.target.value)}
               placeholder="Type a message (max 1,000 chars)..."
               maxLength={1000}
-              className="w-full text-xs px-3 py-2 border border-slate-200 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-brand-500 pr-12"
+              className="w-full text-xs px-4 py-2.5 bg-neutral-100 hover:bg-neutral-100/80 focus:bg-white border border-transparent focus:border-black rounded-full outline-none pr-12 transition"
             />
             {text.length > 800 && (
-              <span className="absolute right-2 top-2 text-[10px] text-slate-400 font-mono">
+              <span className="absolute right-3 top-2.5 text-[10px] text-neutral-400 font-mono">
                 {1000 - text.length}
               </span>
             )}
@@ -479,7 +479,7 @@ export function ChatPanel({ bookingId, currentUserId, bookingStatus }) {
             type="submit"
             data-testid="chat-send-btn"
             disabled={!text.trim() || sending}
-            className="p-2 bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white rounded-lg transition-colors flex-shrink-0"
+            className="p-2.5 bg-black hover:bg-neutral-800 disabled:opacity-50 text-white rounded-full transition shadow-xs flex-shrink-0"
           >
             <Send className="w-4 h-4" />
           </button>

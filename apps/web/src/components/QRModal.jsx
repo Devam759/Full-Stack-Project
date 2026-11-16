@@ -140,63 +140,63 @@ export default function QRModal({ isOpen, onClose, bookingId, type = 'pickup', t
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-      <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl relative border border-zinc-100 text-center">
+      <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl relative border border-neutral-200 text-center">
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 p-1.5 text-zinc-400 hover:text-zinc-600 rounded-full hover:bg-zinc-100 transition"
+          className="absolute top-4 right-4 p-2 text-neutral-400 hover:text-neutral-900 rounded-full hover:bg-neutral-100 transition"
         >
           <X className="w-5 h-5" />
         </button>
 
-        <h3 className="text-lg font-bold text-zinc-900 mb-1">{modalTitle}</h3>
-        <p className="text-xs text-zinc-500 mb-4">
+        <h3 className="text-xl font-black tracking-tight text-neutral-900 mb-1">{modalTitle}</h3>
+        <p className="text-xs text-neutral-500 mb-4">
           Show this QR code to the other party to scan. Codes refresh automatically.
         </p>
 
         {error ? (
-          <div className="p-4 bg-rose-50 text-rose-700 rounded-xl text-sm flex items-center gap-2 mb-4">
+          <div className="p-4 bg-rose-50 text-rose-700 rounded-2xl text-sm flex items-center gap-2 mb-4 border border-rose-200">
             <AlertCircle className="w-5 h-5 shrink-0" />
             <span>{error}</span>
           </div>
         ) : (
           <>
             {/* QR Code Canvas */}
-            <div className="relative inline-block p-3 bg-zinc-50 rounded-2xl border-2 border-zinc-200/80 shadow-inner mb-3">
-              <canvas ref={canvasRef} className="rounded-lg shadow-sm" />
+            <div className="relative inline-block p-3 bg-neutral-50 rounded-3xl border-2 border-neutral-200 shadow-inner mb-3">
+              <canvas ref={canvasRef} className="rounded-xl shadow-xs" />
               {loading && (
-                <div className="absolute inset-0 bg-white/70 backdrop-blur-xs flex items-center justify-center rounded-2xl">
-                  <RefreshCw className="w-6 h-6 text-brand animate-spin" />
+                <div className="absolute inset-0 bg-white/70 backdrop-blur-xs flex items-center justify-center rounded-3xl">
+                  <RefreshCw className="w-6 h-6 text-black animate-spin" />
                 </div>
               )}
             </div>
 
             {/* Countdown timer indicator */}
-            <div className="flex items-center justify-center gap-1.5 text-xs font-medium text-zinc-500 mb-4">
+            <div className="flex items-center justify-center gap-1.5 text-xs font-semibold text-neutral-500 mb-4">
               <RefreshCw
                 className={`w-3.5 h-3.5 ${countdown <= 5 ? 'text-amber-500 animate-spin' : ''}`}
               />
               <span>
-                Refreshes in <span className="font-bold text-zinc-800">{countdown}s</span>
+                Refreshes in <span className="font-bold text-neutral-900">{countdown}s</span>
               </span>
             </div>
 
             {/* 6-Digit Fallback Code Display */}
-            <div className="bg-zinc-100/80 p-3.5 rounded-xl border border-zinc-200 mb-3">
-              <div className="flex items-center justify-center gap-1 text-xs text-zinc-500 mb-1">
+            <div className="bg-neutral-50 p-4 rounded-2xl border border-neutral-200 mb-3">
+              <div className="flex items-center justify-center gap-1 text-xs text-neutral-500 mb-1 font-medium">
                 <KeyRound className="w-3.5 h-3.5" />
                 <span>6-Digit Fallback Code</span>
               </div>
-              <div className="font-mono text-2xl font-black tracking-widest text-zinc-900">
+              <div className="font-mono text-2xl font-black tracking-widest text-neutral-900">
                 {fallbackCode || '------'}
               </div>
-              <div className="text-[10px] text-zinc-400 mt-1">
+              <div className="text-[10px] text-neutral-400 mt-1">
                 Use if camera scanning or GPS is unavailable
               </div>
             </div>
 
             {/* Proximity / Location Status (Never raw coordinates) */}
-            <div className="flex items-center justify-center gap-1.5 text-xs text-zinc-400">
-              <MapPin className="w-3.5 h-3.5 text-emerald-500" />
+            <div className="flex items-center justify-center gap-1.5 text-xs text-neutral-500">
+              <MapPin className="w-3.5 h-3.5 text-neutral-900" />
               <span>
                 {geoStatus === 'ready'
                   ? 'Location ready for proximity check'

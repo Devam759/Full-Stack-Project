@@ -63,30 +63,30 @@ export function ReportModal({ isOpen, onClose, targetType, targetId, targetTitle
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
-      <div className="bg-surface w-full max-w-md rounded-2xl border border-slate-200 shadow-xl overflow-hidden p-5 space-y-4">
-        <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-          <div className="flex items-center gap-2 text-rose-600 font-semibold text-sm">
-            <Flag className="w-4 h-4" />
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+      <div className="bg-white w-full max-w-md rounded-3xl border border-neutral-200 shadow-2xl overflow-hidden p-6 space-y-4">
+        <div className="flex items-center justify-between pb-3 border-b border-neutral-100">
+          <div className="flex items-center gap-2 text-neutral-900 font-black text-base">
+            <Flag className="w-4 h-4 text-neutral-900" />
             <span>Report {targetType ? targetType.toUpperCase() : 'CONTENT'}</span>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition"
+            className="p-2 rounded-full text-neutral-400 hover:text-neutral-900 hover:bg-neutral-100 transition"
           >
-            <X className="w-4 h-4" />
+            <X className="w-5 h-5" />
           </button>
         </div>
 
         {targetTitle && (
-          <p className="text-xs text-text-muted">
-            Reporting: <span className="font-semibold text-slate-800">{targetTitle}</span>
+          <p className="text-xs text-neutral-500">
+            Reporting: <span className="font-bold text-neutral-900">{targetTitle}</span>
           </p>
         )}
 
         {error && (
-          <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl text-xs flex items-center gap-2">
+          <div className="p-3.5 bg-rose-50 border border-rose-200 text-rose-700 rounded-2xl text-xs flex items-center gap-2">
             <AlertTriangle className="w-4 h-4 shrink-0" />
             <span>{error}</span>
           </div>
@@ -94,22 +94,20 @@ export function ReportModal({ isOpen, onClose, targetType, targetId, targetTitle
 
         {success ? (
           <div className="p-6 text-center space-y-2">
-            <CheckCircle className="w-8 h-8 mx-auto text-emerald-500" />
-            <p className="font-semibold text-sm text-slate-800">Report Submitted</p>
-            <p className="text-xs text-text-muted">
+            <CheckCircle className="w-10 h-10 mx-auto text-neutral-900" />
+            <p className="font-bold text-base text-neutral-900">Report Submitted</p>
+            <p className="text-xs text-neutral-500">
               Thank you for keeping BorrowLoop safe. Our customer care team will review this case.
             </p>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4 text-xs">
             <div>
-              <label className="block font-semibold text-slate-700 mb-1.5">
-                Reason for Report:
-              </label>
+              <label className="block font-bold text-neutral-700 mb-1.5">Reason for Report:</label>
               <select
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
-                className="w-full border border-slate-300 rounded-xl px-3 py-2 bg-white text-xs outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                className="w-full border border-neutral-200 rounded-2xl px-3.5 py-3 bg-neutral-50 text-xs font-semibold text-neutral-900 outline-none focus:bg-white focus:border-black"
               >
                 {reasons.map((r) => (
                   <option key={r.value} value={r.value}>
@@ -120,7 +118,7 @@ export function ReportModal({ isOpen, onClose, targetType, targetId, targetTitle
             </div>
 
             <div>
-              <label className="block font-semibold text-slate-700 mb-1.5">
+              <label className="block font-bold text-neutral-700 mb-1.5">
                 Details (optional, max 1000 characters):
               </label>
               <textarea
@@ -129,25 +127,25 @@ export function ReportModal({ isOpen, onClose, targetType, targetId, targetTitle
                 value={details}
                 onChange={(e) => setDetails(e.target.value)}
                 placeholder="Describe what occurred or why this content violates community guidelines..."
-                className="w-full border border-slate-300 rounded-xl p-3 text-xs outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                className="w-full border border-neutral-200 rounded-2xl p-3.5 text-xs bg-neutral-50 text-neutral-900 outline-none focus:bg-white focus:border-black resize-none"
               />
-              <span className="block text-right text-[10px] text-text-muted mt-1">
+              <span className="block text-right text-[10px] text-neutral-400 mt-1">
                 {details.length} / 1000
               </span>
             </div>
 
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+            <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-neutral-100">
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 transition"
+                className="px-5 py-2.5 rounded-full text-xs font-bold text-neutral-600 hover:bg-neutral-100 transition"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={loading}
-                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-semibold transition disabled:opacity-50 flex items-center gap-1.5 shadow-xs"
+                className="px-6 py-2.5 bg-black hover:bg-neutral-800 text-white rounded-full text-xs font-bold transition disabled:opacity-50 flex items-center gap-1.5 cursor-pointer shadow-xs"
               >
                 {loading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                 <span>Submit Report</span>

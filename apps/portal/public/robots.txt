@@ -1,0 +1,4 @@
+# BorrowLoop Operations Portal - Internal Staff Only
+# Explicitly disallow all web crawlers and indexers
+User-agent: *
+Disallow: /
